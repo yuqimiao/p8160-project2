@@ -22,13 +22,102 @@ library(tidyverse)
 ```
 
 ```{r}
-cancer = read_csv("breast-cancer.csv")
+cancer = read_csv("breast-cancer.csv") %>% 
+  mutate(diagnosis = as.numeric(factor(diagnosis, levels = c("B","M"), labels = c(0,1)))-1) %>% 
+  mutate(radius_mean = scale(radius_mean))
+
+cancer_scale = scale(cancer[3:12])
+class(cancer_scale)
+cancer_matrix = cbind(rep(1,569),cancer_scale)
+cancer_matrix[,2]
+## standardize data!!
 ```
 
 $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf X_i^T \boldsymbol \beta$$
 
+```{r}
+cancer_logit = cancer %>% select(contains("mean"), diagnosis)
+cancer_logit %>% select(ends_with("mean"))
 
+hessian_gradient_log = function(data, beta_vec){
+  y = as.matrix(data%>% select(last_col()))
+  x = cancer_matrix
+  theta = x%*%beta_vec
+  pi = exp(theta)/(1+exp(theta))
+  loglikelihood = sum(y*theta-log(1+exp(theta)))
+  gradient = t(x)%*%(y-pi)
+  pi_matrix = matrix(0, nrow = dim(data)[1],ncol = dim(data)[1])
+  diag(pi_matrix) = pi*(1-pi)
+  hessian = -t(x)%*%pi_matrix%*%(x)
+  return(list(loglikelihood = loglikelihood, gradient = gradient, hessian = hessian))
+  
+}
 
+a = hessian_gradient_log(cancer_logit, rep(0.02,11))
+x = eigen(a$hessian)
+sum(x$values>0)
+a$hessian-max(x$values)
+solve(a$hessian)
+
+```
+
+```{r}
+NR = function(data, beta_start,tol = 1e-10, max = 200){
+  i = 0
+  cur = beta_start
+  stuff = hessian_gradient_log(data, cur)
+  curlog = stuff$loglikelihood
+  res = c(i = 0,curlog = curlog,cur = cur)
+  prevlog = -Inf
+  while((i<=max)&(abs(curlog-prevlog)>tol)){
+    i = i+1
+    prevlog = stuff$loglikelihood
+    eigen = eigen(stuff$hessian)
+    if(sum(eigen$values)==0){
+      hessian = stuff$hessian
+    }
+    else{
+      hessian = stuff$hessian - max(eigen$values)
+    }
+    prev = cur
+    cur = prev - solve(hessian)%*%stuff$gradient
+    stuff = hessian_gradient_log(data,cur)
+    curlog = stuff$loglikelihood
+    res = rbind(res, c(i=i, curlog = curlog, cur = cur))
+  }
+  return(res)
+}
+
+NR(cancer_logit, rep(0.02,11))
+```
+
+```{r}
+NR = function(data, beta_start,tol = 1e-10, max = 200){
+  i = 0
+  cur = beta_start
+  stuff = hessian_gradient_log(data, cur)
+  curlog = stuff$loglikelihood
+  res = c(i = 0,curlog = curlog,cur = cur)
+  prevlog = -Inf
+  while((i<=max)&(abs(curlog-prevlog)>tol)){
+    i = i+1
+    prevlog = stuff$loglikelihood
+    eigen = eigen(stuff$heissian)
+    if(sum(eigen$values)==0){
+      hessian = stuff$hessian
+    }
+    else{
+      hessian = stuff$hessian - max(eigen$values)
+    }
+    prev = cur
+    cur = prev - solve(hessian)%*%stuff$gradient
+    stuff = hessian_gradient_log(data,cur)
+    curlog = stuff$loglikelihood
+    res = rbind(res, c(i=i, curlog = curlog, cur = cur))
+  }
+  return(res)
+}
+```
 
 
 
