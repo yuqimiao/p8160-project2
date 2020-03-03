@@ -1,0 +1,40 @@
+---
+title: "200301-EDA_and_model-yuqi"
+author: "Yuqi Miao ym2771"
+date: "3/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(survival)
+require(quantreg)
+require(glmnet)
+require(MASS)
+require(pROC)
+
+set.seed(2019)
+```
+
+```{r, include = F}
+library(tidyverse)
+```
+
+```{r}
+cancer = read_csv("breast-cancer.csv")
+```
+
+$$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf X_i^T \boldsymbol \beta$$
+
+
+
+
+
+
+
+
+
+
+
+
