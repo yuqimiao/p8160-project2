@@ -91,33 +91,6 @@ NR = function(data, beta_start,tol = 1e-10, max = 200){
 NR(cancer_logit, rep(0.02,11))
 ```
 
-```{r}
-NR = function(data, beta_start,tol = 1e-10, max = 200){
-  i = 0
-  cur = beta_start
-  stuff = hessian_gradient_log(data, cur)
-  curlog = stuff$loglikelihood
-  res = c(i = 0,curlog = curlog,cur = cur)
-  prevlog = -Inf
-  while((i<=max)&(abs(curlog-prevlog)>tol)){
-    i = i+1
-    prevlog = stuff$loglikelihood
-    eigen = eigen(stuff$heissian)
-    if(sum(eigen$values)==0){
-      hessian = stuff$hessian
-    }
-    else{
-      hessian = stuff$hessian - max(eigen$values)
-    }
-    prev = cur
-    cur = prev - solve(hessian)%*%stuff$gradient
-    stuff = hessian_gradient_log(data,cur)
-    curlog = stuff$loglikelihood
-    res = rbind(res, c(i=i, curlog = curlog, cur = cur))
-  }
-  return(res)
-}
-```
 
 
 
