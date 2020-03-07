@@ -19,29 +19,28 @@ set.seed(2019)
 
 ```{r, include = F}
 library(tidyverse)
+library(caret)
+
 ```
 
+## data and manipulation
 ```{r}
 cancer = read_csv("breast-cancer.csv") %>% 
   mutate(diagnosis = as.numeric(factor(diagnosis, levels = c("B","M"), labels = c(0,1)))-1) %>% 
   mutate(radius_mean = scale(radius_mean))
+predictor_scale = as.tibble(scale(cancer[3:12]))
+cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
+names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
 
-cancer_scale = scale(cancer[3:12])
-class(cancer_scale)
-cancer_matrix = cbind(rep(1,569),cancer_scale)
-cancer_matrix[,2]
 ## standardize data!!
 ```
 
 $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf X_i^T \boldsymbol \beta$$
 
 ```{r}
-cancer_logit = cancer %>% select(contains("mean"), diagnosis)
-cancer_logit %>% select(ends_with("mean"))
-
 hessian_gradient_log = function(data, beta_vec){
   y = as.matrix(data%>% select(last_col()))
-  x = cancer_matrix
+  x = as.matrix(data[,1:dim(data)[2]-1])
   theta = x%*%beta_vec
   pi = exp(theta)/(1+exp(theta))
   loglikelihood = sum(y*theta-log(1+exp(theta)))
@@ -53,11 +52,7 @@ hessian_gradient_log = function(data, beta_vec){
   
 }
 
-a = hessian_gradient_log(cancer_logit, rep(0.02,11))
-x = eigen(a$hessian)
-sum(x$values>0)
-a$hessian-max(x$values)
-solve(a$hessian)
+a = hessian_gradient_log(cancer_scale, rep(0.02,11))
 
 ```
 
@@ -88,10 +83,104 @@ NR = function(data, beta_start,tol = 1e-10, max = 200){
   return(res)
 }
 
-NR(cancer_logit, rep(0.02,11))
+NR(cancer_scale, rep(0.02,11))
 ```
 
+# validation using glm
+```{r}
+cancer_fit = glm(cancer$diagnosis~cancer_scale, family = binomial(link = "logit"))
+summary(cancer_fit)
 
+# same results with NR
+```
+
+## questions or modify:
+
+1. normalize or standardize?
+2. how to standardize easily?
+
+##
+```{r}
+lambda_max = max(abs(coef(cancer_fit))) ## warm start
+tuning_grid = seq(lambda_max, 0, length = 100) ## tuning seq
+## function of lasso coordinate descent algorithm
+# input:
+# data: y -- binary response;
+#       x -- scaled predictors
+# k: # fold for CV
+# beta_vec: initial beta guess
+# tune_grid: seq of lambda used in variable selection
+# tol: tolerance for stop iteration
+# max: max iteration times
+
+# output: res--result list containing:
+# beta -- tibble:
+#     rows: lambdas
+#     columns:
+#     beta1-beta10: beta estimation for every lambda
+#     targ: target function value for every lambda iteration
+#     times: times of iteration in each lambda iteration
+# coeff -- list of final coefficient
+# best_tune -- best tuning parameter lambda
+# MSE_te -- test MSE results among cv
+
+lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200){
+  ## create fold
+  folds = createFolds(data$response,k = 5, returnTrain = T)
+  
+  ## lasso coord des for train data
+  for (i in 1:k) {
+    tr_rows = folds[[i]]
+    train = data[tr_rows,]
+    test = data[-tr_rows,]
+    n_tr = dim(train)[1]
+    x_tr = as.matrix(train[,1:dim(train)[2]-1]) # dim = (0.8*569, 11)
+    y_tr = as.matrix(train[,dim(train)[2]]) # dim = (0.8*569, 1)
+    ## for every lambda
+    for (lambda in tune_grid) {
+      theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
+      pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
+      w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+      z_vec = theta_vec + (y_tr - pi_vec)/w_vec # dim = (455,1), working response for every obs 
+      w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
+      cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
+      pre_target = -Inf
+      time = 0
+      res = c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec)
+      while((abs(pre_target-cur_target)>tol) & time < max){
+        time = time+1
+        pre_target = cur_target
+        beta_pre = beta_vec
+         for (j in 1:dim(train)[2]-1) {
+           w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr%*%beta_pre + as.vector(x_tr[,j]*beta_pre[j])))
+           # dim(455,1),working response with out jth predictor
+           w_x_tr_j = as.vector(as.vector(sqrt(w_vec)) * x_tr[,j])
+           ## dim(455,1), weighted obs on jth row
+           tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j/(t(w_x_tr_j) %*% w_x_tr_j))
+           if (abs(tmp)>lambda) {
+             if(tmp > 0) {beta_j = tmp - lambda}
+             else {beta_j = tmp + lambda}
+           }else{beta_j = 0}
+          beta_pre[j] = beta_j
+         } 
+        ## sparse updating?
+        beta_vec = beta_pre
+        theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
+        pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
+        w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+        z_vec = theta_vec + (y_tr - pi_vec)/w_vec 
+        # dim = (455,1), working response for every obs 
+        w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
+        cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
+        res = c(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
+      }
+    }
+  }
+  return(res)
+}
+
+lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 1,tune_grid = tuning_grid,)
+```
 
 
 
