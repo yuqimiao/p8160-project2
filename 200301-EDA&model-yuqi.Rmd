@@ -102,7 +102,7 @@ summary(cancer_fit)
 ##
 ```{r}
 lambda_max = max(abs(coef(cancer_fit))) ## warm start
-tuning_grid = seq(lambda_max, 0, length = 100) ## tuning seq
+tuning_grid = seq(10, 1, length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -143,10 +143,10 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
       w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
       z_vec = theta_vec + (y_tr - pi_vec)/w_vec # dim = (455,1), working response for every obs 
       w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
-      cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
+      cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
       pre_target = -Inf
       time = 0
-      res = c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec)
+      res = c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec = beta_vec)
       while((abs(pre_target-cur_target)>tol) & time < max){
         time = time+1
         pre_target = cur_target
@@ -157,12 +157,14 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
            w_x_tr_j = as.vector(as.vector(sqrt(w_vec)) * x_tr[,j])
            ## dim(455,1), weighted obs on jth row
            tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j/(t(w_x_tr_j) %*% w_x_tr_j))
-           if (abs(tmp)>lambda) {
-             if(tmp > 0) {beta_j = tmp - lambda}
-             else {beta_j = tmp + lambda}
-           }else{beta_j = 0}
-          beta_pre[j] = beta_j
-         } 
+           if (j>=2) {
+             if (abs(tmp)>lambda) {
+             if(tmp > 0) {tmp = tmp - lambda}
+             else {tmp = tmp + lambda}
+           }else{tmp = 0}
+           } 
+           beta_pre[j] = tmp
+           }
         ## sparse updating?
         beta_vec = beta_pre
         theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
@@ -172,18 +174,24 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
         # dim = (455,1), working response for every obs 
         w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
         cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
-        res = c(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
-      }
+        res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
+        }
     }
   }
+  res = as.tibble(res)
   return(res)
 }
+x = lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 1,tune_grid = tuning_grid,max = 500)
+x
 
-lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 1,tune_grid = tuning_grid,)
+for (lambda in tuning_grid) {
+  print(lambda)
+}
 ```
 
+## weight is 0 then the theta is 0 which is in denominator, how to fix?
 
-
+## lambda??
 
 
 
