@@ -25,5 +25,8 @@ Due to the relationship:
 $$\mathbf x_i \boldsymbol \beta= \theta_i \ \ \ \ \ \ \ \mathbf X\boldsymbol \beta=\boldsymbol \theta $$
 Take $\beta$ into log likelihood function:
 $$l(y,\beta)=\sum_{i=1}^n(y_i\mathbf x_i\boldsymbol \beta-log(1+e^{\mathbf x_i\boldsymbol \beta}))\\=Y^T\mathbf x_i\boldsymbol \beta-n\times log(1+e^{\mathbf x_i\boldsymbol \beta}))$$
-Take the first derivative of log likelihood function about $\boldsymbol \beta$ to get the score function:
-$$s(y,\theta)=(\frac{\partial\boldsymbol \theta}{\partial \boldsymbol\beta})^T\times \frac{\partial l(y,\beta)}{\partial \boldsymbol \theta}\\=\mathbf X^T(\mathbf Y-\frac{e^\boldsymbol \theta}{1+e^\boldsymbol \theta})=$$
+Take the first derivative of log likelihood function about $\boldsymbol \beta$ to get the gradient:
+$$\nabla f(y,\theta)=(\frac{\partial\boldsymbol \theta}{\partial \boldsymbol\beta})^T\times \frac{\partial l(y,\beta)}{\partial \boldsymbol \theta}\\=\mathbf X^T(\mathbf Y-\frac{e^\boldsymbol \theta}{1+e^\boldsymbol \theta})$$
+
+Take derivative of score function to get the Hessian:
+$$\nabla^2 f(y,\theta)=-\mathbf X^Tdiag(\pi_i(1-\pi_i))\mathbf X$$
