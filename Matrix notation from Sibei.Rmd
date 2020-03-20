@@ -14,8 +14,9 @@ Note: $\mathbf x_n=\begin{pmatrix}1&x_{n1}&...&x_{np}\end{pmatrix}_{ 1\times (p+
 
 By using the logit link, we can get the logistic regression:
 $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta= \theta_i\ \\ \boldsymbol \theta=\begin{pmatrix}\theta_1\\\theta_2\\...\\\theta_n\end{pmatrix}$$
-\n
-$$f_{Y}(y)=\pi_i^y(1-\pi_i)^{1-y_i}$$
+The density function is :
+$$f_Y(y_i)=\pi_i^{y_i}(1-\pi_i)^{1-y_i}$$
+
 Log likelihood function:
 $$l(\mathbf Y,\boldsymbol\pi)=\sum_{i=1}^n l(y_i,\pi_i)=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))\\=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))$$
 Take $\theta_i$ into above equation :
