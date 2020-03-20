@@ -42,7 +42,7 @@ names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
 ## standardize data!!
 ```
 
-$$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf X_i^T \boldsymbol \beta$$
+$$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta$$
 
 ```{r}
 hessian_gradient_log = function(data, beta_vec){

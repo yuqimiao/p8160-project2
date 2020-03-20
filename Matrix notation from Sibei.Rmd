@@ -1,0 +1,29 @@
+---
+title: "Sibei"
+author: "Sibei Liu sl4660"
+date: "2020/3/19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+$$\mathbf X=\begin{pmatrix}1&x_{11}&...&x_{1p}\\1&x_{21}&...&x_{2P}\\...&...&...&...\\1&x_{n1}&...&x_{np}\end{pmatrix}_{n\times(1+p)}=\begin{pmatrix}\mathbf x_1\\\mathbf x_2\\...\\\mathbf x_n\end{pmatrix}     \ \ \ \ \  \mathbf Y=\begin{pmatrix}y_1\\y_2\\...\\y_n\end{pmatrix}_{n\times 1} \ \ \ \boldsymbol{\beta}=\begin{pmatrix}\beta_0\\\beta_1\\...\\\beta_p\end{pmatrix}_{(1+p)\times1} $$
+Note: $\mathbf x_n=\begin{pmatrix}1&x_{n1}&...&x_{np}\end{pmatrix}_{ 1\times (p+1)}$
+
+By using the logit link, we can get the logistic regression:
+$$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta= \theta_i\ \\ \boldsymbol \theta=\begin{pmatrix}\theta_1\\\theta_2\\...\\\theta_n\end{pmatrix}$$
+\n
+$$f_{Y}(y)=\pi_i^y(1-\pi_i)^{1-y_i}$$
+Log likelihood function:
+$$l(y,\pi)=\sum_{i=1}^n l(y_i,\pi_i)=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))\\=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))$$
+Replacing $\pi$ with $\theta$:
+
+$$l(y,\theta)=\sum_{i=1}^n(y_i\theta_i-log(1+e^{\theta_i}))=\mathbf Y^T\boldsymbol \theta-n\times log(1+e^{\boldsymbol \theta})$$
+Due to the relationship:
+$$\mathbf x_i \boldsymbol \beta= \theta_i \ \ \ \ \ \ \ \mathbf X\boldsymbol \beta=\boldsymbol \theta $$
+Take $\beta$ into log likelihood function:
+$$l(y,\beta)=\sum_{i=1}^n(y_i\mathbf x_i\boldsymbol \beta-log(1+e^{\mathbf x_i\boldsymbol \beta}))\\=Y^T\mathbf x_i\boldsymbol \beta-n\times log(1+e^{\mathbf x_i\boldsymbol \beta}))$$
+Take the first derivative of log likelihood function about $\boldsymbol \beta$ to get the score function:
+$$s(y,\theta)=(\frac{\partial\boldsymbol \theta}{\partial \boldsymbol\beta})^T\times \frac{\partial l(y,\beta)}{\partial \boldsymbol \theta}\\=\mathbf X^T(\mathbf Y-\frac{e^\boldsymbol \theta}{1+e^\boldsymbol \theta})=$$
