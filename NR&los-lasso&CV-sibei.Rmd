@@ -104,7 +104,6 @@ result3[nrow(result3),]
 
 ```
 
-
 # Logistic Lasso
 ```{r}
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
@@ -122,13 +121,14 @@ lambdas=seq(lambda_max,0,by=-2)
 }
 ```
 
+## solution of betas of each lambda
 ```{r}
 # when lambda=max_lambda
 beta_1=rep(0,11)
 
 
 # working stuff
- quadratic_appro = function(beta_vec,lambda){
+ quadratic_appro = function(beta_vec,x_matrix,y_matrix,lambda){
   x = x_matrix
   y = y_matrix
   pi=exp(x%*%(beta_vec))/(1+exp(x%*%beta_vec))
@@ -152,7 +152,87 @@ beta_1=rep(0,11)
  return(beta_update)
 }
 
-
+ quadratic_appro(beta_1,x_matrix,y_matrix,lambdas[2])
 ```
+
+# use all x and y to try the  quadratic_appro and get the series of betas
+```{r}
+lab=c("lambda",str_c("beta",1:11))
+beta_new=beta_1
+result4=rbind(lab,c(lambdas[1],beta_new))
+i=2
+for(i in 2:8){
+  beta_new=quadratic_appro(beta_new,x_matrix,y_matirx,lambdas[i])
+  result4=rbind(result4,c(lambdas[i],beta_new))
+  i=i+1
+}
+result4 %>% tibble()
+```
+
+Cross-validation
+```{r}
+data_use=data_cancer 
+
+set.seed(2020)
+library(caret)
+library(ModelMetrics)
+#Split data to 5 fold
+cvSplit = createFolds(data_use$diagnosis,
+                             k=5,
+                             returnTrain = TRUE)
+str(cvSplit)
+```
+
+
+create empty mse_folder to hold the mse in each lambda and each fold
+```{r}
+mse_folds=matrix(rep(NA,40),nrow=5,ncol=8)
+```
+
+
+```{r}
+k=1
+for(k in 1:5){
+  trRows=cvSplit[[k]]
+  train_fold=data_use[trRows,]
+  vali_fold= data_use[-trRows,]
+  
+  x_train = as.matrix(cbind(rep(1,nrow(train_fold)),scale(train_fold[,3:12])))
+  y_train = train_fold$diagnosis
+
+  x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
+  y_vali = vali_fold$diagnosis
+  
+  
+  lab=c("lambda",str_c("beta",1:11))
+ beta_new=rep(0,11)
+ result5=rbind(lab,c(lambdas[1],beta_new))
+ i=2
+ for(i in 2:8){
+  beta_new=quadratic_appro(beta_new,x_train,y_train,lambdas[i])
+  result5=rbind(result5,c(lambdas[i],beta_new))
+  i=i+1
+}
+  d=2
+  for(d in 2:9){
+  beta_cor=as.numeric(result5[d,2:12])
+  theta= x_vali%*% t(t(beta_cor))
+  y_fit=exp(theta)/(1+exp(theta))
+  mse_folds[k,d-1]=mse(y_vali,y_fit)
+  d=d+1
+}
+  k=k+1
+}
+
+mse_final=c(rep(NA,8))
+for(i in 1:8){
+  mse_final[i]=mean(mse_folds[,i])}
+
+mins=min(mse_final)
+
+order=which(mse_final==mins)
+lambdas[order]## is the lambda which produces the smallest mse
+```
+
 
 
