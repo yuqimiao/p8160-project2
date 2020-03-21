@@ -104,3 +104,56 @@ result3[nrow(result3),]
 
 ```
 
+
+## dosen't work i don't know why
+# Logistic Lasso
+```{r}
+ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
+lambda_max=max(coef(ori_linear))
+lambdas=seq(lambda_max,0,by=-2)
+
+# s function
+  S=function(solution,lambda){
+  if (abs(solution)>lambda){
+    if(solution<0){
+      return(solution+lambda)
+    }else{return(solution-lambda)}
+  }
+  else{return(0)}
+}
+```
+
+```{r}
+# when lambda=max_lambda
+beta_1=rep(0,11)
+
+# working stuff
+quadratic_appro = function(beta_vec,lambda){
+  x = x_matrix
+  y = y_matrix
+  pi=exp(x%*%(beta_vec))/(1+exp(x%*%beta_vec))
+  wi=pi*(1-pi)
+  zi=x%*%beta_vec+(y-pi)/wi
+  
+  y_star1=zi-x%*%beta_vec
+  beta=rep(0,11)
+  beta[1]=mean(y_star1)
+  beta_update=c(beta[1],beta_vec[2:11])
+  i=2
+  for (i in 1:11){
+    y_star2=zi-x[,-i]%*% beta_update[-i]
+    beta[i]=sum(wi*x[,i]*y_star2)
+    beta[i]=S(beta[i],lambda)/sum(wi*(x[,i]^2))
+    beta_pre=beta_update
+    beta_update=c(beta_pre[1:i-1],beta[i],beta_pre[i+1:11])
+    i=i+1
+  }
+  return(beta_update)
+}
+
+
+quadratic_appro(beta_1,lambdas[2])
+
+```
+
+
