@@ -109,6 +109,7 @@ result3[nrow(result3),]
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
 lambda_max=max(coef(ori_linear))
 lambdas=seq(lambda_max,0,by=-2)
+len=length(lambdas)
 
 # s function
   S=function(solution,lambda){
@@ -161,7 +162,7 @@ lab=c("lambda",str_c("beta",1:11))
 beta_new=beta_1
 result4=rbind(lab,c(lambdas[1],beta_new))
 i=2
-for(i in 2:8){
+for(i in 2:len){
   beta_new=quadratic_appro(beta_new,x_matrix,y_matirx,lambdas[i])
   result4=rbind(result4,c(lambdas[i],beta_new))
   i=i+1
@@ -181,18 +182,19 @@ cvSplit = createFolds(data_use$diagnosis,
                              k=5,
                              returnTrain = TRUE)
 str(cvSplit)
+fold_number=5
 ```
 
 
 create empty mse_folder to hold the mse in each lambda and each fold
 ```{r}
-mse_folds=matrix(rep(NA,40),nrow=5,ncol=8)
+mse_folds=matrix(rep(NA,fold_number*len),nrow=fold_number,ncol=len)
 ```
 
 
 ```{r}
 k=1
-for(k in 1:5){
+for(k in 1:fold_number){
   trRows=cvSplit[[k]]
   train_fold=data_use[trRows,]
   vali_fold= data_use[-trRows,]
@@ -208,13 +210,13 @@ for(k in 1:5){
  beta_new=rep(0,11)
  result5=rbind(lab,c(lambdas[1],beta_new))
  i=2
- for(i in 2:8){
+ for(i in 2:len){
   beta_new=quadratic_appro(beta_new,x_train,y_train,lambdas[i])
   result5=rbind(result5,c(lambdas[i],beta_new))
   i=i+1
 }
   d=2
-  for(d in 2:9){
+  for(d in 2:(len+1)){
   beta_cor=as.numeric(result5[d,2:12])
   theta= x_vali%*% t(t(beta_cor))
   y_fit=exp(theta)/(1+exp(theta))
@@ -224,10 +226,13 @@ for(k in 1:5){
   k=k+1
 }
 
-mse_final=c(rep(NA,8))
-for(i in 1:8){
+mse_folds
+
+mse_final=c(rep(NA,len))
+for(i in 1:len){
   mse_final[i]=mean(mse_folds[,i])}
 
+mse_final
 mins=min(mse_final)
 
 order=which(mse_final==mins)
