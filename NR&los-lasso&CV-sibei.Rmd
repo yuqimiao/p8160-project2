@@ -108,7 +108,7 @@ result3[nrow(result3),]
 ```{r}
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
 lambda_max=max(coef(ori_linear))
-lambdas=seq(lambda_max,0,by=-2)
+lambdas=seq(lambda_max,0,by=-0.5)
 len=length(lambdas)
 
 # s function
@@ -144,7 +144,7 @@ beta_1=rep(0,11)
   for(i in 2:11){
     y_star2=zi-x[,-i]%*% beta_update[-i]
     beta[i]=sum(wi*x[,i]*y_star2)
-    beta[i]=S(beta[i],lambdas[2])/sum(wi*(x[,i]^2))
+    beta[i]=S(beta[i],lambda)/sum(wi*(x[,i]^2))
     beta_pre=beta_update
     if(i!=11){beta_update=c(beta_pre[1:i-1],beta[i],beta_pre[(i+1):11])}else
     {beta_update = c(beta_pre[1:i-1],beta[i])}
@@ -153,7 +153,7 @@ beta_1=rep(0,11)
  return(beta_update)
 }
 
- quadratic_appro(beta_1,x_matrix,y_matrix,lambdas[2])
+ quadratic_appro(beta_1,x_matrix,y_matrix,lambdas[3])
 ```
 
 # use all x and y to try the  quadratic_appro and get the series of betas
@@ -163,7 +163,7 @@ beta_new=beta_1
 result4=rbind(lab,c(lambdas[1],beta_new))
 i=2
 for(i in 2:len){
-  beta_new=quadratic_appro(beta_new,x_matrix,y_matirx,lambdas[i])
+  beta_new=quadratic_appro(beta_new,x_matrix,y_matrix,lambdas[i])
   result4=rbind(result4,c(lambdas[i],beta_new))
   i=i+1
 }
