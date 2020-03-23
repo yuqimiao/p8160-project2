@@ -69,9 +69,10 @@ NR = function(data, beta_start,tol = 1e-10, max = 200){
   cur = beta_start
   stuff = hessian_gradient_log(data, cur)
   curlog = stuff$loglikelihood
-  res = c(i = 0,curlog = curlog,cur = cur)
+  res = c(i = 0,curlog = curlog,cur = cur,step = step)
   prevlog = -Inf
   while((i<=max)&(abs(curlog-prevlog)>tol)){
+    step = 1
     i = i+1
     prevlog = stuff$loglikelihood
     eigen = eigen(stuff$hessian)
@@ -82,15 +83,24 @@ NR = function(data, beta_start,tol = 1e-10, max = 200){
       hessian = stuff$hessian - max(eigen$values)
     }
     prev = cur
-    cur = prev - solve(hessian)%*%stuff$gradient
+    cur = prev - rep(step,length(prev))*(solve(hessian)%*%stuff$gradient)
     stuff = hessian_gradient_log(data,cur)
     curlog = stuff$loglikelihood
-    res = rbind(res, c(i=i, curlog = curlog, cur = cur))
+    while(curlog<prevlog){
+      step = step/2
+      cur = prev - rep(step,length(prev))*(solve(hessian)%*%stuff$gradient)
+      stuff = hessian_gradient_log(data,cur)
+      curlog = stuff$loglikelihood
+    }
+    names(cur) = names(data)[-12]
+    res = rbind(res, c(i=i, curlog = curlog, cur = cur,step = step))
   }
   return(res)
 }
+beta_start = rep(0.02,11)
+names(beta_start) = names(cancer_scale)[-12]
 
-NR_result = NR(cancer_scale, rep(0.02,11))
+NR_result = NR(cancer_scale, beta_start)
 
 NR_coeff =  NR_result[dim(NR_result)[1], -1:-2]
 ```

@@ -1,0 +1,77 @@
+---
+title: "methods"
+author: "Yuqi Miao ym2771"
+date: "3/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = F)
+```
+
+# Methods
+
+## Data
+
+The mean statistics for every feature are selected as predictors in the model. The sample size for the data is 569. The response variable is  "diagnosis", which is transformed to a binary variable (Benign = 0, Malignant = 1),and the 11 predictors are standardised. 
+
+```{r}
+cancer = read_csv("breast-cancer.csv") %>% 
+  mutate(diagnosis = as.numeric(factor(diagnosis, levels = c("B","M"), labels = c(0,1)))-1) %>% 
+  mutate(radius_mean = scale(radius_mean))
+predictor_scale = as.tibble(scale(cancer[3:12]))
+cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
+names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
+# head(cancer_scale)
+## standardize data!!
+```
+
+## Model define
+
+For $i_{th}$ observation, the response variable $Y_i$ follows binary distribution:
+
+$$Y_i\sim Bin(\pi_i)$$
+
+the log-liklihood function:
+
+$$l(\mathbf Y,\boldsymbol\pi)=\sum_{i=1}^n l(y_i,\pi_i)=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))\\=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))$$
+
+Where $\pi_i$ denotes the probablity of the $i_{th}$ observation to be maglinant.
+
+To build relationship between the response and predictors, the GLM is defined as:
+
+$$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta= \theta_i$$
+
+
+
+## Full model
+
+Firstly, Newton-Rapson method is used to fit the full model. To find the maximum likelihood estimation of coefficients, iteration process is set as follows:
+
+$$\theta_{i+1}  = \theta_{i} -(\nabla^2l(\theta_{i}|\boldsymbol X))^{-1}\nabla l(\theta_{i}|\boldsymbol X) $$
+
+$$\nabla l(\theta|\boldsymbol X)=(\frac{\partial\boldsymbol \theta}{\partial \boldsymbol\beta})^T\times \frac{\partial l(y,\beta)}{\partial \boldsymbol \theta}\\=\mathbf X^T(\mathbf Y-\frac{e^\boldsymbol \theta}{1+e^\boldsymbol \theta})$$
+
+$$\nabla^2 l(\theta|\boldsymbol X)=-\mathbf X^Tdiag(\pi_i(1-\pi_i))\mathbf X$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
