@@ -101,8 +101,10 @@ result2[nrow(result2),]
 result3=newton_direc(x_matrix,func_log,rep(0.2,11))
 result3
 result3[nrow(result3),]
-
 ```
+Note: if steo halving is used, then the results are different from Yuqi's
+
+
 
 # Logistic Lasso
 ```{r}
@@ -167,7 +169,7 @@ for(i in 2:len){
   result4=rbind(result4,c(lambdas[i],beta_new))
   i=i+1
 }
-result4 %>% tibble()
+result4 %>% as.data.frame()
 ```
 
 Cross-validation
@@ -237,6 +239,8 @@ mins=min(mse_final)
 
 order=which(mse_final==mins)
 lambdas[order]## is the lambda which produces the smallest mse
+
+result4 %>% as.data.frame() %>% filter(V1==lambdas[order])## the coef corresponds to optimal lambda,note the V1 is the lambda value
 ```
 
 
