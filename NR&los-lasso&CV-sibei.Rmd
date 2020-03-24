@@ -124,7 +124,7 @@ len=length(lambdas)
 ## solution of betas of each lambda
 ```{r}
 # when lambda=max_lambda
-beta_1=rep(0,11)
+beta_1=c(mean(y_matrix),rep(0,10))## lasso dosen't shrink interecpt
 
 
 # working stuff
@@ -152,7 +152,7 @@ beta_1=rep(0,11)
  return(beta_update)
 }
 
- quadratic_appro(beta_1,x_matrix,y_matrix,lambdas[3])
+ quadratic_appro(beta_1,x_matrix,y_matrix,lambdas[2])
 ```
 
 # use all x and y to try the  quadratic_appro and get the series of betas
@@ -206,7 +206,8 @@ for(k in 1:fold_number){
   
   
   lab=c("lambda",str_c("beta",1:11))
- beta_new=rep(0,11)
+  linear_res_fold=glm(y_train~x_train[,-1],family=binomial(link='logit'))
+ beta_new=c(mean(y_train),S(coef(linear_res_fold) %>% as.vector(),lambda[1]))
  result5=rbind(lab,c(lambdas[1],beta_new))
  i=2
  for(i in 2:len){
