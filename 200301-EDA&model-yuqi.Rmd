@@ -172,10 +172,13 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
       res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
       while((abs(pre_target-cur_target)>tol) & time < max){
         time = time+1
+        zero_index = seq(1,length(beta_start))
         pre_target = cur_target
         beta_pre = beta_vec
          for (j in 1:dim(train)[2]-1) {
-           w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr%*%beta_pre + as.vector(x_tr[,j]*beta_pre[j])))
+           x_tr_s = x_tr[,zero_index]
+           beta_pre_s = beta_pre[zero_index] ## sparse updating
+           w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr_s%*%beta_pre_s + as.vector(x_tr[,j]*beta_pre[j])))
            # dim(455,1),working response with out jth predictor
            w_x_tr_j = as.vector(as.vector(sqrt(w_vec)) * x_tr[,j])
            ## dim(455,1), weighted obs on jth row
@@ -184,11 +187,12 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
              if (abs(tmp)>lambda) {
              if(tmp > 0) {tmp = tmp - lambda}
              else {tmp = tmp + lambda}
-           }else{tmp = 0}
-           } 
+             }else{
+             tmp = 0
+             zero_index = zero_index[zero_index!=j]}
+           }
            beta_pre[j] = tmp
            }
-        ## sparse updating?
         beta_vec = beta_pre
         theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
         pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
@@ -232,7 +236,8 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
 }
 x = lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 5,tune_grid = tuning_grid,max = 200)
 
-x
+knitr::kable(x)
+
 
 ```
 
