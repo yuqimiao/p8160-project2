@@ -61,7 +61,7 @@ eigen(d$hess)
 
 modify the direction and step using step halving if necessary
 ```{r}
-newton_direc =function(data,func,start,tol=exp(-10),max=200){
+newton_direc =function(data,func,start,tol=1e-10,max=200){
   i=0
   cur=start
   stuff=func(data,cur)
@@ -93,12 +93,9 @@ newton_direc =function(data,func,start,tol=exp(-10),max=200){
   return(res)
 }
 
-# starting value rep(0.1,11)
-result2=newton_direc(x_matrix,func_log,rep(0.4,11))
-result2
-result2[nrow(result2),]
-# starting value rep(0.2,11)
-result3=newton_direc(x_matrix,func_log,rep(0.2,11))
+
+# starting value rep(0.02,11)
+result3=newton_direc(x_matrix,func_log,rep(0.02,11))
 result3
 result3[nrow(result3),]
 ```
