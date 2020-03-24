@@ -2,11 +2,14 @@
 title: "methods"
 author: "Yuqi Miao ym2771"
 date: "3/23/2020"
-output: html_document
+output: 
+  pdf_document:
+    latex_engine: xelatex
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(include = F)
+```{r setup,include = F}
+knitr::opts_chunk$set(echo=FALSE,warning = F)
+library(tidyverse)
 ```
 
 # Methods
@@ -22,9 +25,11 @@ cancer = read_csv("breast-cancer.csv") %>%
 predictor_scale = as.tibble(scale(cancer[3:12]))
 cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
 names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
-# head(cancer_scale)
+
 ## standardize data!!
 ```
+
+## description table?
 
 ## Model define
 
@@ -48,28 +53,47 @@ $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta= \theta_i$$
 
 Firstly, Newton-Rapson method is used to fit the full model. To find the maximum likelihood estimation of coefficients, iteration process is set as follows:
 
-$$\theta_{i+1}  = \theta_{i} -(\nabla^2l(\theta_{i}|\boldsymbol X))^{-1}\nabla l(\theta_{i}|\boldsymbol X) $$
+$$\theta_{i+1}  = \theta_{i} -\delta (\nabla^2l(\theta_{i}|\boldsymbol X)-\gamma I)^{-1}\nabla l(\theta_{i}|\boldsymbol X) $$
+where $\delta$ is the step coefficient to ensure the increasing of likelihood funciton, and $\gamma$ is the modification coefficient to ensure the aescent direction of the iteration vector.
 
-$$\nabla l(\theta|\boldsymbol X)=(\frac{\partial\boldsymbol \theta}{\partial \boldsymbol\beta})^T\times \frac{\partial l(y,\beta)}{\partial \boldsymbol \theta}\\=\mathbf X^T(\mathbf Y-\frac{e^\boldsymbol \theta}{1+e^\boldsymbol \theta})$$
+$$\nabla l(\theta|\boldsymbol X)=\mathbf X^T(\mathbf Y-\boldsymbol \pi)$$
 
 $$\nabla^2 l(\theta|\boldsymbol X)=-\mathbf X^Tdiag(\pi_i(1-\pi_i))\mathbf X$$
 
+## logit-lasso pathwise coordinate-wise update algorithm
 
+To select variables and increase the prediction efficiency, lasso was integrated into the coordinate-wise logit regression. 
 
+The target function:
 
+$$min\{-l({\boldsymbol \beta})+\lambda\sum_{j=1}^{p}|\beta_j| \}$$
+$$l({\boldsymbol \beta}) = -\frac{1}{2n}\sum_{i=1}^{n}\omega_i(z_i-{\boldsymbol {X_i\beta}})$$
 
+$$\pi_i = \frac{exp({\boldsymbol {X_i\beta}})}{1+exp({\boldsymbol {X_i\beta}})}$$
 
+$$\omega_i = \pi_i(1-\pi_i)$$
 
+$$z_i = {\boldsymbol {X_i\beta}}+\frac{y_i-\pi_i}{\pi_i(1-\pi_i)}$$
 
+Pre-define the tuning parameter sequence $\{\lambda_1,...,\lambda_s\}$, starting point ${\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}$. Here we elaborately explain the optimal process for $\lambda_u$: Using the optimal $\boldsymbol {\beta_{u-1}}$ from last iteration as the warm start. within every iteration, find the optimal $\beta$ coordinate-wise.
+For $\beta_j$ in $t_th$ iteration
 
+$$\beta_j^{(t)} = \left\{\begin{array}{lc} \sum_{i=1}^{n} \omega_i(z_i-\sum_{j=1}^{p}{\boldsymbol {X_i}\beta_j}),&j=0\\s(\beta_j^{(t*)},\lambda_u),&j = 1,2,...,p\end{array}\right.$$
 
+$$\beta_j^{(t*)} = \frac{\sum_{i=1}^{n}\omega_ix_{ij}z_{ij}^*}{\sum_{i=1}^{n}\omega_ix_{ij}^2}$$
+$$z_{ij}^* = z_t-\underset {\beta_k\neq0}{\sum_{k = 0}^{j-1}}\beta_k^{(i)}x_{ik}-\underset {\beta_k\neq0}{\sum_{k=j+1}^{p}}\beta_k^{(i-1)}x_{ik}$$
 
+## Cross Validation
 
+In order to check the model performance, we use 5-fold cross validation. Using training dataset  to choose the best tuning parameter and fit model, and using test dataset to evaluate the final prediction. The statistics we use to compare the validation is MSE and person chi-square statistics, which are defined as:
 
+$$MSE = \frac{1}{n}\sum_{i=1}^{n}(y_i-{\widehat \pi_i})$$
+$${\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}$$
+$$G = \sum_{i=1}^{n}\frac{y_i-{\widehat \pi_i}}{{\widehat \pi_i}(1-{\widehat \pi_i})}$$
 
+By taking average of above 2 statistics of 5 fold, we get the final index to evaluate the model fitting.
 
-
-
+## contingency table
 
 
 

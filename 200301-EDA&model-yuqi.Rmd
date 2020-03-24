@@ -121,7 +121,7 @@ summary(cancer_fit)
 ##
 ```{r}
 lambda_max = max(abs(NR_coeff)) ## warm start
-tuning_grid = seq(lambda_max, 1, length = 100) ## tuning seq
+tuning_grid = seq(3, 0.1,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -182,16 +182,16 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
            # dim(455,1),working response with out jth predictor
            w_x_tr_j = as.vector(as.vector(sqrt(w_vec)) * x_tr[,j])
            ## dim(455,1), weighted obs on jth row
-           tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j/(t(w_x_tr_j) %*% w_x_tr_j))
+           tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j)
            if (j>=2) {
-             if (abs(tmp)>lambda) {
-             if(tmp > 0) {tmp = tmp - lambda}
-             else {tmp = tmp + lambda}
-             }else{
-             tmp = 0
-             zero_index = zero_index[zero_index!=j]}
+             if (abs(tmp)>lambda*dim(x_tr)[1]) {
+              if(tmp > 0) {tmp = tmp - lambda*dim(x_tr)[1]}
+              else {tmp = tmp + lambda*dim(x_tr)[1]}
+              }else{
+              tmp = 0
+              zero_index = zero_index[zero_index!=j]}
            }
-           beta_pre[j] = tmp
+           beta_pre[j] = tmp/(t(w_x_tr_j) %*% w_x_tr_j)
            }
         beta_vec = beta_pre
         theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
@@ -243,6 +243,23 @@ knitr::kable(x)
 
 ## instead of using MSE, using pearson chi-square 
 
+validation
+
+```{r}
+x.mat <- model.matrix(response~., data[-1])[,-1]
+y.class <- data$response
+
+ctrl1 <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+lasso.fit <- train(x.mat, y.class,
+                   method = "glmnet",
+                   tuneGrid = expand.grid(alpha = 1,
+                                          lambda = tuning_grid), 
+                   # preProc = c("center", "scale"),
+                   trControl = ctrl1)
+
+lasso.fit$bestTune
+coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
+```
 
 
 
