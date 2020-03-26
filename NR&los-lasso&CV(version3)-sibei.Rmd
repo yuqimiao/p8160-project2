@@ -2,10 +2,10 @@
 title: "group_project2"
 author: "Sibei Liu sl4660"
 date: "2020/3/1"
-output: pdf_document
+output: html_document
 ---
 
-```{r, include=FALSE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
@@ -15,7 +15,6 @@ require(quantreg)
 require(glmnet)
 require(MASS)
 require(pROC)
-library(patchwork)
 
 set.seed(2019)
 data_cancer=read_csv("breast-cancer.csv") %>% 
@@ -32,7 +31,7 @@ y_matrix=data_cancer$diagnosis
 ```
 
 
-```{r,include=FALSE}
+```{r}
 ### create function to obtain loglike, gradient and hess
 
 func_log= function(x_matrix,beta_estimate){
@@ -61,8 +60,9 @@ d
 ```
 
 
-```{r,include=FALSE}
-#modify the direction and step using step halving if necessary
+modify the direction and step using step halving if necessary
+```{r}
+
 newton_direc =function(data,func,start,tol=exp(-10),max=200){
   i=0
   cur=start
@@ -107,9 +107,8 @@ result3[nrow(result3),]
 
 
 
-
-```{r,include=FALSE}
 # Logistic Lasso
+```{r}
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
 coef_1=coef(ori_linear) %>% as.vector()
 lambda_max=max(abs(coef(ori_linear)))
@@ -145,9 +144,8 @@ len=length(lambdas)
 ```
 
 
-
-```{r,include=FALSE}
 ## solution of betas of each lambda
+```{r}
 # when lambda=max_lambda
 
 beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
@@ -162,7 +160,7 @@ beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
   zi=x%*%beta_vec+(y-pi)/wi
   
   y_star1=zi-x[,-1]%*%beta_vec[-1]
-  beta=rep(0,11)
+  beta=rep(0,11)# to store
   beta[1]=mean(y_star1)
   beta_update=c(beta[1],beta_vec[2:11])
   i=2
@@ -178,19 +176,20 @@ beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
  return(beta_update)
 }
 
- quadratic_appro(beta_1,x_matrix,y_matrix,lambdas[2])
+ beta_2=rep(0.02,11)
+ quadratic_appro(beta_2,x_matrix,y_matrix,lambdas[1])
 ```
 
 
-```{r,include=FALSE}
+```{r}
 # use all x and y to try the  quadratic_appro and get the series of betas
 # below code is useless in cv, just simply try
 
 lab=c("lambda",str_c("beta",1:11))
-result4=rbind(lab,c(lambdas[1],beta_1))
-i=2
-beta_vec=beta_1
-for(i in 2:len){
+result4=rbind(lab,c("initial",beta_2))## first guess beta=rep(0.02,11)
+i=1
+beta_vec=beta_2
+for(i in 1:len){
   beta_new=quadratic_appro(beta_vec,x_matrix,y_matrix,lambdas[i])
   result4=rbind(result4,c(lambdas[i],beta_new))
   beta_vec=beta_new
@@ -199,9 +198,9 @@ for(i in 2:len){
 result4 %>% as.tibble()
 ```
 
+cross-validation
+```{r}
 
-```{r,include=FALSE}
-#CV
 data_use=data_cancer 
 
 set.seed(2020)
@@ -217,9 +216,10 @@ fold_number=5
 
 
 
-```{r,include=FALSE}
+```{r}
 k=1
 beta_total=rep(0,11)
+
 for(k in 1:fold_number){
   trRows=cvSplit[[k]]
   train_fold=data_use[trRows,]
@@ -241,21 +241,22 @@ max(abs(beta_total))
 
 
 
-```{r,include=FALSE}
-lambdas2=c(seq(max(abs(beta_total)),0,by=-0.05),0)
+```{r}
+lambdas2=c(seq(3,0,by=-0.01),0)
 len2=length(lambdas2)
 ```
 
-
-```{r,include=FALSE}
-#create empty mse_folder to hold the mse in each lambda and each fold
+create empty mse_folder to hold the mse in each lambda and each fold
+```{r}
 mse_folds=matrix(rep(NA,fold_number*len2),nrow=fold_number,ncol=len2)
 ```
 
 
-```{r,include=FALSE}
+```{r}
 k=1
+guess=beta_2
 for(k in 1:fold_number){
+  
   trRows=cvSplit[[k]]
   train_fold=data_use[trRows,]
   vali_fold= data_use[-trRows,]
@@ -265,15 +266,15 @@ for(k in 1:fold_number){
 
   x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
   y_vali = vali_fold$diagnosis
-  linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
-  beta_new=coef(linear) %>% as.vector()
+  #linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
+  #beta_new=coef(linear) %>% as.vector()
   
   lab=c("lambda",str_c("beta",1:11))
- beta_vec=c(beta_new[1],S_S(beta_new[2:11],lambdas2[1]))
- result5=rbind(lab,beta_new)
- i=2
- for(i in 2:len2){
-   beta_new=quadratic_appro(beta_vec,x_matrix,y_matrix,lambdas2[i])
+ beta_vec=guess
+ result5=rbind(lab,c("initial",beta_vec))
+ i=1
+ for(i in 1:len2){
+   beta_new=quadratic_appro(beta_vec,x_train,y_train,lambdas2[i])
   result5=rbind(result5,c(lambdas2[i],beta_new))
   beta_vec=beta_new
   i=i+1
@@ -289,10 +290,11 @@ for(k in 1:fold_number){
   k=k+1
 }
 mse_folds
+
 ```
 
 
-```{r,include=FALSE}
+```{r}
 mse_final=c(rep(NA,len2))
 for(i in 1:len2){
   mse_final[i]=mean(mse_folds[,i])}
@@ -307,17 +309,17 @@ lambdas2[order]## is the lambda which produces the smallest mse
 
 dataframe=tibble(mse=mse_final,
                         lambdas=lambdas2)
-p1=ggplot(dataframe,aes(x=lambdas,y=mse))+geom_line()+theme_bw()+labs(title="a")
+ggplot(dataframe,aes(x=lambdas,y=mse))+geom_line()
 
 dataframe1=tibble(mse=mse_final,
                         lambdas=lambdas2) %>% filter(lambdas2<=3)
 
-  p2=ggplot(dataframe1,aes(x=lambdas,y=mse,label=mse))+geom_point(color = ifelse(dataframe1$lambdas ==lambdas2[order],"red", "grey" ))+theme_bw()+labs(title="b")
+  ggplot(dataframe1,aes(x=lambdas,y=mse,label=mse))+geom_point(color = ifelse(dataframe1$lambdas ==lambdas2[order],"red", "grey" ))
   
 ```
 
 
-```{r,include=FALSE}
+```{r}
 lab=c("lambda",str_c("beta",1:11))
 beta_vec2=S_S(coef_1[2:11],lambdas2[1])
 result7=rbind(lab,c(lambdas2[1],coef_1[1],beta_vec2))
@@ -330,57 +332,5 @@ for(i in 2:len2){
   i=i+1
 }
 result7 %>% as.tibble() %>% filter(V1==lambdas2[order])
-```
-
-
-
-```{r}
-library(caret)
-tuning_grid=lambdas2[-length(lambdas2)]
-data3=data_cancer %>% dplyr::select(-id)
-data3=data3[,1:11]
-x_noscaled=model.matrix(diagnosis~., data3)[,-1]
-y_noscaled=data3$diagnosis
-
-ctrl1 <- trainControl(method = "cv", number = 5)
-lasso.fit <- train(x_noscaled, y_noscaled,
-                   method = "glmnet",
-                   tuneGrid = expand.grid(alpha = 1,
-                                          lambda = tuning_grid), 
-                   # preProc = c("center", "scale"),
-                   trControl = ctrl1)
-
-lasso.fit$bestTune
-coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
-```
-
-
-
-
-
-# Results
-## Newton-Raphson
-
-After doing the Newton-Raphson modified with step and direction the estimation of coefficients are:
-```{r,echo=FALSE}
-h=result3[nrow(result3),]
-h_h=h[3:13]
-names(h_h)=c("intercept",names(data_cancer[,3:12]))
-h_h%>%as.data.frame() %>% knitr::kable()
-```
-
-\begin{center}
-Table 1. Estimated coefficients under Newton-Raphson method
-\end{center}
-
-## Cross Validation
-
-The range of $\lambda$ we tried is (0,`r max(abs(beta_total))`) , the MSE of each $\lambda$ is in the Figure 1(a). If the range (0,3) is amplified, we can get the (b) plot. The red dot denotes the $\lambda$=`r lambdas2[order]` with smallest MSE `r mins`
-
-\begin{center}
-Figure 1. MSE vs $\lambda$
-\end{center}
-```{r,echo=FALSE,fig.height=2.5,fig.width=5}
-p1+p2
 ```
 
