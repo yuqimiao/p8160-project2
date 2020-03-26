@@ -2,10 +2,10 @@
 title: "group_project2"
 author: "Sibei Liu sl4660"
 date: "2020/3/1"
-output: html_document
+output: pdf_document
 ---
 
-```{r setup, include=FALSE}
+```{r, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
@@ -15,6 +15,7 @@ require(quantreg)
 require(glmnet)
 require(MASS)
 require(pROC)
+library(patchwork)
 
 set.seed(2019)
 data_cancer=read_csv("breast-cancer.csv") %>% 
@@ -31,7 +32,7 @@ y_matrix=data_cancer$diagnosis
 ```
 
 
-```{r}
+```{r,include=FALSE}
 ### create function to obtain loglike, gradient and hess
 
 func_log= function(x_matrix,beta_estimate){
@@ -60,9 +61,8 @@ d
 ```
 
 
-modify the direction and step using step halving if necessary
-```{r}
-
+```{r,include=FALSE}
+#modify the direction and step using step halving if necessary
 newton_direc =function(data,func,start,tol=exp(-10),max=200){
   i=0
   cur=start
@@ -107,8 +107,9 @@ result3[nrow(result3),]
 
 
 
+
+```{r,include=FALSE}
 # Logistic Lasso
-```{r}
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
 coef_1=coef(ori_linear) %>% as.vector()
 lambda_max=max(abs(coef(ori_linear)))
@@ -144,8 +145,9 @@ len=length(lambdas)
 ```
 
 
+
+```{r,include=FALSE}
 ## solution of betas of each lambda
-```{r}
 # when lambda=max_lambda
 
 beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
@@ -180,7 +182,7 @@ beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
 ```
 
 
-```{r}
+```{r,include=FALSE}
 # use all x and y to try the  quadratic_appro and get the series of betas
 # below code is useless in cv, just simply try
 
@@ -197,9 +199,9 @@ for(i in 2:len){
 result4 %>% as.tibble()
 ```
 
-cross-validation
-```{r}
 
+```{r,include=FALSE}
+#CV
 data_use=data_cancer 
 
 set.seed(2020)
@@ -215,7 +217,7 @@ fold_number=5
 
 
 
-```{r}
+```{r,include=FALSE}
 k=1
 beta_total=rep(0,11)
 for(k in 1:fold_number){
@@ -239,18 +241,19 @@ max(abs(beta_total))
 
 
 
-```{r}
+```{r,include=FALSE}
 lambdas2=c(seq(max(abs(beta_total)),0,by=-0.05),0)
 len2=length(lambdas2)
 ```
 
-create empty mse_folder to hold the mse in each lambda and each fold
-```{r}
+
+```{r,include=FALSE}
+#create empty mse_folder to hold the mse in each lambda and each fold
 mse_folds=matrix(rep(NA,fold_number*len2),nrow=fold_number,ncol=len2)
 ```
 
 
-```{r}
+```{r,include=FALSE}
 k=1
 for(k in 1:fold_number){
   trRows=cvSplit[[k]]
@@ -289,7 +292,7 @@ mse_folds
 ```
 
 
-```{r}
+```{r,include=FALSE}
 mse_final=c(rep(NA,len2))
 for(i in 1:len2){
   mse_final[i]=mean(mse_folds[,i])}
@@ -304,17 +307,17 @@ lambdas2[order]## is the lambda which produces the smallest mse
 
 dataframe=tibble(mse=mse_final,
                         lambdas=lambdas2)
-ggplot(dataframe,aes(x=lambdas,y=mse))+geom_line()
+p1=ggplot(dataframe,aes(x=lambdas,y=mse))+geom_line()+theme_bw()+labs(title="a")
 
 dataframe1=tibble(mse=mse_final,
                         lambdas=lambdas2) %>% filter(lambdas2<=3)
 
-  ggplot(dataframe1,aes(x=lambdas,y=mse,label=mse))+geom_point(color = ifelse(dataframe1$lambdas ==lambdas2[order],"red", "grey" ))
+  p2=ggplot(dataframe1,aes(x=lambdas,y=mse,label=mse))+geom_point(color = ifelse(dataframe1$lambdas ==lambdas2[order],"red", "grey" ))+theme_bw()+labs(title="b")
   
 ```
 
 
-```{r}
+```{r,include=FALSE}
 lab=c("lambda",str_c("beta",1:11))
 beta_vec2=S_S(coef_1[2:11],lambdas2[1])
 result7=rbind(lab,c(lambdas2[1],coef_1[1],beta_vec2))
@@ -329,4 +332,29 @@ for(i in 2:len2){
 result7 %>% as.tibble() %>% filter(V1==lambdas2[order])
 ```
 
+# Results
+## Newton-Raphson
+
+After doing the Newton-Raphson modified with step and direction the estimation of coefficients are:
+```{r,echo=FALSE}
+h=result3[nrow(result3),]
+h_h=h[3:13]
+names(h_h)=c("intercept",names(data_cancer[,3:12]))
+h_h%>%as.data.frame() %>% knitr::kable()
+```
+
+\begin{center}
+Table 1. Estimated coefficients under Newton-Raphson method
+\end{center}
+
+## Cross Validation
+
+The range of $\lambda$ we tried is (0,`r max(abs(beta_total))`) , the MSE of each $\lambda$ is in the Figure 1(a). If the range (0,3) is amplified, we can get the (b) plot. The red dot denotes the $\lambda$=`r lambdas2[order]` with smallest MSE `r mins`
+
+\begin{center}
+Figure 1. MSE vs $\lambda$
+\end{center}
+```{r,echo=FALSE,fig.height=2.5,fig.width=5}
+p1+p2
+```
 
