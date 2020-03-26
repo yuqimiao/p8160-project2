@@ -124,6 +124,7 @@ len=length(lambdas)
   }
   else{return(0)}
     }
+  
     
    S_S=function(solution,lambda) {
      i=1
@@ -181,6 +182,7 @@ beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
 
 ```{r}
 # use all x and y to try the  quadratic_appro and get the series of betas
+# below code is useless in cv, just simply try
 
 lab=c("lambda",str_c("beta",1:11))
 result4=rbind(lab,c(lambdas[1],beta_1))
@@ -212,9 +214,39 @@ fold_number=5
 ```
 
 
+
+```{r}
+k=1
+beta_total=rep(0,11)
+for(k in 1:fold_number){
+  trRows=cvSplit[[k]]
+  train_fold=data_use[trRows,]
+  vali_fold= data_use[-trRows,]
+  
+  x_train = as.matrix(cbind(rep(1,nrow(train_fold)),scale(train_fold[,3:12])))
+  y_train = train_fold$diagnosis
+
+  x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
+  y_vali = vali_fold$diagnosis
+  linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
+  beta_new=coef(linear) %>% as.vector()
+  beta_total=cbind(beta_total,beta_new)
+  k=k+1
+}
+
+max(abs(beta_total))
+```
+
+
+
+```{r}
+lambdas2=c(seq(max(abs(beta_total)),0,by=-0.05),0)
+len2=length(lambdas2)
+```
+
 create empty mse_folder to hold the mse in each lambda and each fold
 ```{r}
-mse_folds=matrix(rep(NA,fold_number*len),nrow=fold_number,ncol=len)
+mse_folds=matrix(rep(NA,fold_number*len2),nrow=fold_number,ncol=len2)
 ```
 
 
@@ -234,17 +266,17 @@ for(k in 1:fold_number){
   beta_new=coef(linear) %>% as.vector()
   
   lab=c("lambda",str_c("beta",1:11))
- beta_vec=c(beta_new[1],S_S(beta_new[2:11],lambdas[1]))
+ beta_vec=c(beta_new[1],S_S(beta_new[2:11],lambdas2[1]))
  result5=rbind(lab,beta_new)
  i=2
- for(i in 2:len){
-   beta_new=quadratic_appro(beta_vec,x_matrix,y_matrix,lambdas[i])
-  result5=rbind(result5,c(lambdas[i],beta_new))
+ for(i in 2:len2){
+   beta_new=quadratic_appro(beta_vec,x_matrix,y_matrix,lambdas2[i])
+  result5=rbind(result5,c(lambdas2[i],beta_new))
   beta_vec=beta_new
   i=i+1
 }
   d=2
-  for(d in 2:(len+1)){
+  for(d in 2:(len2+1)){
   beta_cor=as.numeric(result5[d,2:12])
   theta= x_vali%*% t(t(beta_cor))
   y_fit=exp(theta)/(1+exp(theta))
@@ -258,8 +290,8 @@ mse_folds
 
 
 ```{r}
-mse_final=c(rep(NA,len))
-for(i in 1:len){
+mse_final=c(rep(NA,len2))
+for(i in 1:len2){
   mse_final[i]=mean(mse_folds[,i])}
 
 mse_final
@@ -268,20 +300,32 @@ mse_final
 mins=min(mse_final)
 mins
 order=which(mse_final==mins)
-lambdas[order]## is the lambda which produces the smallest mse
+lambdas2[order]## is the lambda which produces the smallest mse
 
 dataframe=tibble(mse=mse_final,
-                        lambdas=lambdas)
+                        lambdas=lambdas2)
 ggplot(dataframe,aes(x=lambdas,y=mse))+geom_line()
 
 dataframe1=tibble(mse=mse_final,
-                        lambdas=lambdas) %>% filter(lambdas<=3) %>% 
-  mutate(highlight_flag = ifelse(country == 'United States', T, F))
+                        lambdas=lambdas2) %>% filter(lambdas2<=3)
 
-  ggplot(dataframe1,aes(x=lambdas,y=mse,label=mse))+geom_point(color = ifelse(dataframe1$lambdas ==lambdas[order],"red", "grey" ))
+  ggplot(dataframe1,aes(x=lambdas,y=mse,label=mse))+geom_point(color = ifelse(dataframe1$lambdas ==lambdas2[order],"red", "grey" ))
   
-result4 %>% as.data.frame() %>% filter(V1==lambdas[order])## the coef corresponds to optimal lambda,note the V1 is the lambda value
 ```
 
 
+```{r}
+lab=c("lambda",str_c("beta",1:11))
+beta_vec2=S_S(coef_1[2:11],lambdas2[1])
+result7=rbind(lab,c(lambdas2[1],coef_1[1],beta_vec2))
+i=2
+beta_vec2=c(coef_1[1],beta_vec2)
+for(i in 2:len2){
+  beta_new=quadratic_appro(beta_vec2,x_matrix,y_matrix,lambdas2[i])
+  result7=rbind(result7,c(lambdas2[i],beta_new))
+  beta_vec2=beta_new
+  i=i+1
+}
+result7 %>% as.tibble() %>% filter(V1==lambdas2[order])
+```
 
