@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
-
+library(ggrepel)
 require(survival)
 require(quantreg)
 require(glmnet)
@@ -20,9 +20,11 @@ set.seed(2019)
 data_cancer=read_csv("breast-cancer.csv") %>% 
   mutate(
     diagnosis=as.numeric(factor(diagnosis,level=c("B","M")))-1
-  )
+  ) 
+
 n=nrow(data_cancer)
 predictor_scaled=scale(data_cancer[,3:12])
+x_matrix_nointer=as.matrix(predictor_scaled)
 x_matrix=as.matrix(cbind(rep(1,n),predictor_scaled))# add 1 as to combine with beta_0
 y_matrix=data_cancer$diagnosis
 
@@ -36,7 +38,7 @@ func_log= function(x_matrix,beta_estimate){
 theta=x_matrix%*%t(t(beta_estimate))
 pi=exp(theta)/(1+exp(theta))
 ## below loglike
-loglike=t(y_matrix)%*%theta-sum(n*log(1+exp(theta)))
+loglike=t(y_matrix)%*%theta-sum(log(1+exp(theta)))
 ## below gradient
 gradient=t(x_matrix)%*%(t(t(y_matrix))-pi)
 
@@ -53,15 +55,15 @@ return(list(loglike=loglike,gradient=gradient,hess=hess))
 }
 
 
-d=func_log(x_matrix,rep(0.4,11))
-d$hess
-eigen(d$hess)
+d=func_log(x_matrix,rep(0.02,11))
+d
 ```
 
 
 modify the direction and step using step halving if necessary
 ```{r}
-newton_direc =function(data,func,start,tol=1e-10,max=200){
+
+newton_direc =function(data,func,start,tol=exp(-10),max=200){
   i=0
   cur=start
   stuff=func(data,cur)
@@ -74,8 +76,9 @@ newton_direc =function(data,func,start,tol=1e-10,max=200){
     if(eigen_value$values[1]>0 |eigen_value$values[2]>0|eigen_value$values[3]>0|eigen_value$values[4]>0
        |eigen_value$values[5]>0|eigen_value$values[6]>0|eigen_value$values[7]>0|eigen_value$values[8]>0|eigen_value$values[9]>0|eigen_value$values[10]>0|eigen_value$values[11]>0)
       {
-      stuff$hess=hess-max(eigen_value$values)*matrix(rep(1,11*11),11,11)
+      stuff$hess=stuff$hess-max(eigen_value$values)*matrix(rep(1,11*11),11,11)
     }### to check the if hess is negative definite, correct the direction
+    
     
     i=i+1
     prevloglike=stuff$loglike
@@ -83,6 +86,7 @@ newton_direc =function(data,func,start,tol=1e-10,max=200){
     cur=pre-solve(stuff$hess) %*% stuff$gradient
     stuff=func(data,cur)
     n=0
+    #while((stuff$loglike <= prevloglike)){
     while((stuff$loglike <= prevloglike) && (n<10)){
       n=n+1
       cur=pre-(1/(2^n))*(solve(stuff$hess))%*% stuff$gradient
@@ -99,32 +103,51 @@ result3=newton_direc(x_matrix,func_log,rep(0.02,11))
 result3
 result3[nrow(result3),]
 ```
-Note: if steo halving is used, then the results are different from Yuqi's
+
 
 
 
 # Logistic Lasso
 ```{r}
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
-lambda_max=max(coef(ori_linear))
-lambdas=seq(lambda_max,0,by=-0.5)
+coef_1=coef(ori_linear) %>% as.vector()
+lambda_max=max(abs(coef(ori_linear)))
+lambdas=c(seq(lambda_max,0,by=-0.05),0)
 len=length(lambdas)
 
 # s function
-  S=function(solution,lambda){
+    S=function(solution,lambda){
   if (abs(solution)>lambda){
     if(solution<0){
-      return(solution+lambda)
-    }else{return(solution-lambda)}
+      return(solution=solution+lambda)
+    }else{return(solution=solution-lambda)}
   }
   else{return(0)}
-}
+    }
+    
+   S_S=function(solution,lambda) {
+     i=1
+     for(i in 1:length(solution)){
+     if (abs(solution[i])>lambda){
+    if(solution[i]<0){
+      solution[i]=solution[i]+lambda
+    }else{solution[i]=solution[i]-lambda}
+  }
+  else{solution[i]=0}
+       i=i+1
+     }
+     return(solution)
+   }
+   
+   
 ```
+
 
 ## solution of betas of each lambda
 ```{r}
 # when lambda=max_lambda
-beta_1=c(mean(y_matrix),rep(0,10))## lasso dosen't shrink interecpt
+
+beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
 
 
 # working stuff
@@ -135,7 +158,7 @@ beta_1=c(mean(y_matrix),rep(0,10))## lasso dosen't shrink interecpt
   wi=pi*(1-pi)
   zi=x%*%beta_vec+(y-pi)/wi
   
-  y_star1=zi-x%*%beta_vec
+  y_star1=zi-x[,-1]%*%beta_vec[-1]
   beta=rep(0,11)
   beta[1]=mean(y_star1)
   beta_update=c(beta[1],beta_vec[2:11])
@@ -155,22 +178,26 @@ beta_1=c(mean(y_matrix),rep(0,10))## lasso dosen't shrink interecpt
  quadratic_appro(beta_1,x_matrix,y_matrix,lambdas[2])
 ```
 
-# use all x and y to try the  quadratic_appro and get the series of betas
+
 ```{r}
+# use all x and y to try the  quadratic_appro and get the series of betas
+
 lab=c("lambda",str_c("beta",1:11))
-beta_new=beta_1
-result4=rbind(lab,c(lambdas[1],beta_new))
+result4=rbind(lab,c(lambdas[1],beta_1))
 i=2
+beta_vec=beta_1
 for(i in 2:len){
-  beta_new=quadratic_appro(beta_new,x_matrix,y_matrix,lambdas[i])
+  beta_new=quadratic_appro(beta_vec,x_matrix,y_matrix,lambdas[i])
   result4=rbind(result4,c(lambdas[i],beta_new))
+  beta_vec=beta_new
   i=i+1
 }
-result4 %>% as.data.frame()
+result4 %>% as.tibble()
 ```
 
-Cross-validation
+cross-validation
 ```{r}
+
 data_use=data_cancer 
 
 set.seed(2020)
@@ -203,16 +230,17 @@ for(k in 1:fold_number){
 
   x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
   y_vali = vali_fold$diagnosis
-  
+  linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
+  beta_new=coef(linear) %>% as.vector()
   
   lab=c("lambda",str_c("beta",1:11))
-  linear_res_fold=glm(y_train~x_train[,-1],family=binomial(link='logit'))
- beta_new=c(mean(y_train),S(coef(linear_res_fold) %>% as.vector(),lambda[1]))
- result5=rbind(lab,c(lambdas[1],beta_new))
+ beta_vec=c(beta_new[1],S_S(beta_new[2:11],lambdas[1]))
+ result5=rbind(lab,beta_new)
  i=2
  for(i in 2:len){
-  beta_new=quadratic_appro(beta_new,x_train,y_train,lambdas[i])
+   beta_new=quadratic_appro(beta_vec,x_matrix,y_matrix,lambdas[i])
   result5=rbind(result5,c(lambdas[i],beta_new))
+  beta_vec=beta_new
   i=i+1
 }
   d=2
@@ -225,19 +253,33 @@ for(k in 1:fold_number){
 }
   k=k+1
 }
-
 mse_folds
+```
 
+
+```{r}
 mse_final=c(rep(NA,len))
 for(i in 1:len){
   mse_final[i]=mean(mse_folds[,i])}
 
 mse_final
-mins=min(mse_final)
 
+
+mins=min(mse_final)
+mins
 order=which(mse_final==mins)
 lambdas[order]## is the lambda which produces the smallest mse
 
+dataframe=tibble(mse=mse_final,
+                        lambdas=lambdas)
+ggplot(dataframe,aes(x=lambdas,y=mse))+geom_line()
+
+dataframe1=tibble(mse=mse_final,
+                        lambdas=lambdas) %>% filter(lambdas<=3) %>% 
+  mutate(highlight_flag = ifelse(country == 'United States', T, F))
+
+  ggplot(dataframe1,aes(x=lambdas,y=mse,label=mse))+geom_point(color = ifelse(dataframe1$lambdas ==lambdas[order],"red", "grey" ))
+  
 result4 %>% as.data.frame() %>% filter(V1==lambdas[order])## the coef corresponds to optimal lambda,note the V1 is the lambda value
 ```
 
