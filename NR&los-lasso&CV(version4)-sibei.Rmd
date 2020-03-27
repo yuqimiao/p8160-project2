@@ -112,15 +112,14 @@ result3[nrow(result3),]
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
 coef_1=coef(ori_linear) %>% as.vector()
 lambda_max=max(abs(coef(ori_linear)))
-lambdas=seq(0.5, 0.01,length = 100)
+lambdas=seq(14, 0.01,length = 100)
 len=length(lambdas)
 
 # s function
-    S=function(solution,lambda){
-  if (abs(solution)>lambda){
-    if(solution<0){
-      return(solution=solution+lambda)
-    }else{return(solution=solution-lambda)}
+    S=function(solution,c){
+  if (abs(solution)>c){
+    if(solution<0) {return(solution=solution+c)}
+    else{return(solution=solution-c)}
   }
   else{return(0)}
     }
@@ -148,8 +147,8 @@ len=length(lambdas)
 ```{r}
 
 # working stuff
- quadratic_appro = function(beta_vec,x_matrix,y_matrix,lambda){
- 
+ quadratic_coor_wise = function(beta_vec,x_matrix,y_matrix,lambda){
+
   x = x_matrix
   y = y_matrix
   pi=exp(x%*%(beta_vec))/(1+exp(x%*%beta_vec))
@@ -158,7 +157,7 @@ len=length(lambdas)
   
   y_star1=zi-x[,-1]%*%beta_vec[-1]
   beta=rep(0,11)# to store
-  beta[1]=sum(wi*(y_star1))
+  beta[1]=sum(wi*y_star1)/sum(wi)
   beta_update=c(beta[1],beta_vec[2:11])
   i=2
   for(i in 2:11){
@@ -176,7 +175,7 @@ len=length(lambdas)
 }
 
  beta_2=rep(0.02,11)
- quadratic_appro(beta_2,x_matrix,y_matrix,lambdas[98])
+ quadratic_coor_wise(beta_2,x_matrix,y_matrix,lambdas[98])
 ```
 
 
@@ -189,7 +188,7 @@ result4=rbind(lab,c("initial",beta_2))## first guess beta=rep(0.02,11)
 i=1
 beta_enter=beta_2
 for(i in 1:len){
-  beta_new=quadratic_appro(beta_enter,x_matrix,y_matrix,lambdas[i])
+  beta_new=quadratic_coor_wise(beta_enter,x_matrix,y_matrix,lambdas[i])
   result4=rbind(result4,c(lambdas[i],beta_new))
   beta_enter=beta_new
   i=i+1
@@ -241,7 +240,7 @@ fold_number=5
 
 
 ```{r}
-lambdas2=seq(3, 0.001,length = 100)
+lambdas2=seq(14, 0.001,length = 100)
 len2=length(lambdas2)
 ```
 
@@ -273,7 +272,7 @@ for(k in 1:fold_number){
  i=1
  beta_enter=beta_2
  for(i in 1:len2){
-   beta_new=quadratic_appro(beta_enter,x_train,y_train,lambdas2[i])
+   beta_new=quadratic_coor_wise(beta_enter,x_train,y_train,lambdas2[i])
   result5=rbind(result5,c(lambdas2[i],beta_new))
   beta_enter=beta_new
   i=i+1
@@ -319,7 +318,7 @@ dataframe1=tibble(mse=mse_final,
 ```
 
 
-```{r}
+#```{r}
 lab=c("lambda",str_c("beta",1:11))
 beta_vec2=S_S(coef_1[2:11],lambdas2[1])
 result7=rbind(lab,c(lambdas2[1],coef_1[1],beta_vec2))
