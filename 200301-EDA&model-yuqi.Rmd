@@ -36,6 +36,7 @@ cancer = read_csv("breast-cancer.csv") %>%
   mutate(diagnosis = as.numeric(factor(diagnosis, levels = c("B","M"), labels = c(0,1)))-1) %>% 
   mutate(radius_mean = scale(radius_mean))
 predictor_scale = as.tibble(scale(cancer[3:12]))
+cancer_package = cancer %>% select(contains("mean"), diagnosis)
 cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
 names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
 
@@ -120,8 +121,8 @@ summary(cancer_fit)
 
 ##
 ```{r}
-lambda_max = max(abs(NR_coeff)) ## warm start
-tuning_grid = seq(3, 0.1,length = 100) ## tuning seq
+#lambda_max = max(abs(NR_coeff)) ## warm start
+tuning_grid = seq(14, 0.001,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -162,9 +163,10 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
     for (lambda in sort(tune_grid, decreasing = T)) {
       theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
       pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
-      w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+      w_vec = pi_vec*(1-pi_vec)+rep(1e-10,length(pi_vec)) # dim = (455,1), weight for every obs 
       z_vec = theta_vec + (y_tr - pi_vec)/w_vec # dim = (455,1), working response for every obs 
       w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
+      #w_res_vec = w_res_vec[!is.nan(w_res_vec)]
       cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
       pre_target = -Inf
       time = 0
@@ -179,14 +181,17 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
            x_tr_s = x_tr[,zero_index]
            beta_pre_s = beta_pre[zero_index] ## sparse updating
            w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr_s%*%beta_pre_s + as.vector(x_tr[,j]*beta_pre[j])))
+           #w_z_vec_j = w_z_vec_j[!is.nan(w_z_vec_j)]
            # dim(455,1),working response with out jth predictor
            w_x_tr_j = as.vector(as.vector(sqrt(w_vec)) * x_tr[,j])
+           #w_x_tr_j = w_x_tr_j[!is.nan(w_x_tr_j)]
            ## dim(455,1), weighted obs on jth row
            tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j)
+           lambda_n = lambda*dim(x_tr)[1] 
            if (j>=2) {
-             if (abs(tmp)>lambda*dim(x_tr)[1]) {
-              if(tmp > 0) {tmp = tmp - lambda*dim(x_tr)[1]}
-              else {tmp = tmp + lambda*dim(x_tr)[1]}
+             if (abs(tmp)>lambda_n) {
+              if(tmp > 0) {tmp = tmp - lambda_n}
+              else {tmp = tmp + lambda_n}
               }else{
               tmp = 0
               zero_index = zero_index[zero_index!=j]}
@@ -196,10 +201,11 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
         beta_vec = beta_pre
         theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
         pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
-        w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+        w_vec = pi_vec*(1-pi_vec)+rep(1e-10,length(pi_vec)) # dim = (455,1), weight for every obs 
         z_vec = theta_vec + (y_tr - pi_vec)/w_vec 
         # dim = (455,1), working response for every obs 
         w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
+        w_res_vec = w_res_vec[!is.nan(w_res_vec)]
         cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
         res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
       }
@@ -218,8 +224,8 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   g.res = (rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat)/sqrt(pi_hat*(1-pi_hat))
   g.stat_tr = as.vector(rowSums(t(g.res^2)))
   best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr)) %>% 
-    filter(g.stat_tr == min(g.stat_tr)) 
-  
+    filter(g.stat_tr == min(g.stat_tr)) %>% filter(lambda == min(lambda))  
+  best_result = best_result[1,]
   # use test datasets to evaluate
   best_result_m = as.matrix(best_result[3:dim(best_result)[2]-1])
   pi_hat_te = exp(x_te %*% t(best_result_m))/(1+exp(x_te %*% t(best_result_m)))
@@ -246,8 +252,8 @@ knitr::kable(x)
 validation
 
 ```{r}
-x.mat <- model.matrix(response~., data[-1])[,-1]
-y.class <- data$response
+x.mat <- model.matrix(diagnosis~., cancer_package[-1])[,-1]
+y.class <- cancer_package$diagnosis
 
 ctrl1 <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 lasso.fit <- train(x.mat, y.class,

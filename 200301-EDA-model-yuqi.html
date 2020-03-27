@@ -394,11 +394,12 @@ summary {
 <pre class="r"><code>predictor_scale = as.tibble(scale(cancer[3:12]))</code></pre>
 <pre><code>## Warning: `as.tibble()` is deprecated, use `as_tibble()` (but mind the new semantics).
 ## This warning is displayed once per session.</code></pre>
-<pre class="r"><code>cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
+<pre class="r"><code>cancer_package = cancer %&gt;% select(contains(&quot;mean&quot;), diagnosis)
+cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
 names(cancer_scale) = c(&quot;ones&quot;, names(cancer)[3:12], &quot;response&quot;)
 
 ## standardize data!!</code></pre>
-<p><span class="math display">\[\log(\frac{\pi_i}{1-\pi_i}) = \mathbf X_i^T \boldsymbol \beta\]</span></p>
+<p><span class="math display">\[\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta\]</span></p>
 <pre class="r"><code>hessian_gradient_log = function(data, beta_vec){
   y = as.matrix(data%&gt;% select(last_col()))
   x = as.matrix(data[,1:dim(data)[2]-1])
@@ -419,9 +420,10 @@ a = hessian_gradient_log(cancer_scale, rep(0.02,11))</code></pre>
   cur = beta_start
   stuff = hessian_gradient_log(data, cur)
   curlog = stuff$loglikelihood
-  res = c(i = 0,curlog = curlog,cur = cur)
+  res = c(i = 0,curlog = curlog,cur = cur,step = step)
   prevlog = -Inf
   while((i&lt;=max)&amp;(abs(curlog-prevlog)&gt;tol)){
+    step = 1
     i = i+1
     prevlog = stuff$loglikelihood
     eigen = eigen(stuff$hessian)
@@ -432,15 +434,24 @@ a = hessian_gradient_log(cancer_scale, rep(0.02,11))</code></pre>
       hessian = stuff$hessian - max(eigen$values)
     }
     prev = cur
-    cur = prev - solve(hessian)%*%stuff$gradient
+    cur = prev - rep(step,length(prev))*(solve(hessian)%*%stuff$gradient)
     stuff = hessian_gradient_log(data,cur)
     curlog = stuff$loglikelihood
-    res = rbind(res, c(i=i, curlog = curlog, cur = cur))
+    while(curlog&lt;prevlog){
+      step = step/2
+      cur = prev - rep(step,length(prev))*(solve(hessian)%*%stuff$gradient)
+      stuff = hessian_gradient_log(data,cur)
+      curlog = stuff$loglikelihood
+    }
+    names(cur) = names(data)[-12]
+    res = rbind(res, c(i=i, curlog = curlog, cur = cur,step = step))
   }
   return(res)
 }
+beta_start = rep(0.02,11)
+names(beta_start) = names(cancer_scale)[-12]
 
-NR_result = NR(cancer_scale, rep(0.02,11))
+NR_result = NR(cancer_scale, beta_start)
 
 NR_coeff =  NR_result[dim(NR_result)[1], -1:-2]</code></pre>
 </div>
@@ -492,8 +503,8 @@ NR_coeff =  NR_result[dim(NR_result)[1], -1:-2]</code></pre>
 </div>
 <div id="section" class="section level2">
 <h2></h2>
-<pre class="r"><code>lambda_max = max(abs(NR_coeff)) ## warm start
-tuning_grid = seq(lambda_max, 1, length = 100) ## tuning seq
+<pre class="r"><code>#lambda_max = max(abs(NR_coeff)) ## warm start
+tuning_grid = seq(14, 0.001,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -534,9 +545,10 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
     for (lambda in sort(tune_grid, decreasing = T)) {
       theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
       pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
-      w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+      w_vec = pi_vec*(1-pi_vec)+rep(1e-10,length(pi_vec)) # dim = (455,1), weight for every obs 
       z_vec = theta_vec + (y_tr - pi_vec)/w_vec # dim = (455,1), working response for every obs 
       w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
+      #w_res_vec = w_res_vec[!is.nan(w_res_vec)]
       cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
       pre_target = -Inf
       time = 0
@@ -544,30 +556,38 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
       res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
       while((abs(pre_target-cur_target)&gt;tol) &amp; time &lt; max){
         time = time+1
+        zero_index = seq(1,length(beta_start))
         pre_target = cur_target
         beta_pre = beta_vec
          for (j in 1:dim(train)[2]-1) {
-           w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr%*%beta_pre + as.vector(x_tr[,j]*beta_pre[j])))
+           x_tr_s = x_tr[,zero_index]
+           beta_pre_s = beta_pre[zero_index] ## sparse updating
+           w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr_s%*%beta_pre_s + as.vector(x_tr[,j]*beta_pre[j])))
+           #w_z_vec_j = w_z_vec_j[!is.nan(w_z_vec_j)]
            # dim(455,1),working response with out jth predictor
            w_x_tr_j = as.vector(as.vector(sqrt(w_vec)) * x_tr[,j])
+           #w_x_tr_j = w_x_tr_j[!is.nan(w_x_tr_j)]
            ## dim(455,1), weighted obs on jth row
-           tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j/(t(w_x_tr_j) %*% w_x_tr_j))
+           tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j)
+           lambda_n = lambda*dim(x_tr)[1] 
            if (j&gt;=2) {
-             if (abs(tmp)&gt;lambda) {
-             if(tmp &gt; 0) {tmp = tmp - lambda}
-             else {tmp = tmp + lambda}
-           }else{tmp = 0}
-           } 
-           beta_pre[j] = tmp
+             if (abs(tmp)&gt;lambda_n) {
+              if(tmp &gt; 0) {tmp = tmp - lambda_n}
+              else {tmp = tmp + lambda_n}
+              }else{
+              tmp = 0
+              zero_index = zero_index[zero_index!=j]}
            }
-        ## sparse updating?
+           beta_pre[j] = tmp/(t(w_x_tr_j) %*% w_x_tr_j)
+           }
         beta_vec = beta_pre
         theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
         pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
-        w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+        w_vec = pi_vec*(1-pi_vec)+rep(1e-10,length(pi_vec)) # dim = (455,1), weight for every obs 
         z_vec = theta_vec + (y_tr - pi_vec)/w_vec 
         # dim = (455,1), working response for every obs 
         w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
+        w_res_vec = w_res_vec[!is.nan(w_res_vec)]
         cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
         res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
       }
@@ -586,8 +606,8 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   g.res = (rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat)/sqrt(pi_hat*(1-pi_hat))
   g.stat_tr = as.vector(rowSums(t(g.res^2)))
   best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr)) %&gt;% 
-    filter(g.stat_tr == min(g.stat_tr)) 
-  
+    filter(g.stat_tr == min(g.stat_tr)) %&gt;% filter(lambda == min(lambda))  
+  best_result = best_result[1,]
   # use test datasets to evaluate
   best_result_m = as.matrix(best_result[3:dim(best_result)[2]-1])
   pi_hat_te = exp(x_te %*% t(best_result_m))/(1+exp(x_te %*% t(best_result_m)))
@@ -606,31 +626,175 @@ x = lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 5,tune_grid =
 <pre><code>## Adding missing grouping variables: `lambda`Adding missing grouping variables:
 ## `lambda`Adding missing grouping variables: `lambda`Adding missing grouping
 ## variables: `lambda`Adding missing grouping variables: `lambda`</code></pre>
-<pre class="r"><code>x</code></pre>
-<pre><code>##           k best_lambda beta_vec1  beta_vec2 beta_vec3 beta_vec4 beta_vec5
-## cv_result 0 0           0.02       0.02      0.02      0.02      0.02     
-##           1 1           -0.4978091 0         0         0         1.136286 
-##           2 14.00485    -0.4978091 0         0         0         1.136286 
-##           3 14.00485    -0.54782   0         0         0.2840452 0.6069709
-##           4 1           -0.5254904 0         0         0         1.262193 
-##           5 1           -0.4496373 0         0         0         0.8896176
-##           beta_vec6 beta_vec7 beta_vec8 beta_vec9 beta_vec10 beta_vec11
-## cv_result 0.02      0.02      0.02      0.02      0.02       0.02      
-##           0         0         0         1.779246  0          0         
-##           0         0         0         1.779246  0          0         
-##           0         0         0         1.652942  0          0         
-##           0         0         0         1.907925  0          0         
-##           0         0         0         2.281916  0          0         
-##           g.stat_tr g.stat_te
-## cv_result Inf       Inf      
-##           164.1125  34.36418 
-##           167.3465  31.13019 
-##           161.1721  44.63183 
-##           152.5172  46.57716 
-##           153.3074  50.00299</code></pre>
+<pre class="r"><code>knitr::kable(x)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th align="left">k</th>
+<th align="left">best_lambda</th>
+<th align="left">beta_vec1</th>
+<th align="left">beta_vec2</th>
+<th align="left">beta_vec3</th>
+<th align="left">beta_vec4</th>
+<th align="left">beta_vec5</th>
+<th align="left">beta_vec6</th>
+<th align="left">beta_vec7</th>
+<th align="left">beta_vec8</th>
+<th align="left">beta_vec9</th>
+<th align="left">beta_vec10</th>
+<th align="left">beta_vec11</th>
+<th align="left">g.stat_tr</th>
+<th align="left">g.stat_te</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>cv_result</td>
+<td align="left">0</td>
+<td align="left">0</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">0.02</td>
+<td align="left">Inf</td>
+<td align="left">Inf</td>
+</tr>
+<tr class="even">
+<td></td>
+<td align="left">1</td>
+<td align="left">0.001</td>
+<td align="left">-0.613524105797821</td>
+<td align="left">1.95513722283707</td>
+<td align="left">0.745328663808087</td>
+<td align="left">0.266421690390261</td>
+<td align="left">-0.00164236794008937</td>
+<td align="left">0.718764850061118</td>
+<td align="left">0.124132524412123</td>
+<td align="left">0.271338994220987</td>
+<td align="left">0.831838087422037</td>
+<td align="left">0.104084906458982</td>
+<td align="left">-0.151648965375399</td>
+<td align="left">136.612191549903</td>
+<td align="left">23.1060167719698</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td align="left">2</td>
+<td align="left">0.001</td>
+<td align="left">-0.633047391406877</td>
+<td align="left">1.90784713089334</td>
+<td align="left">0.82201274626507</td>
+<td align="left">0.234351788371469</td>
+<td align="left">-0.00793463027955548</td>
+<td align="left">0.697156614323523</td>
+<td align="left">0.199180843134297</td>
+<td align="left">0.264504538886279</td>
+<td align="left">0.761352241281214</td>
+<td align="left">0.123471469956635</td>
+<td align="left">-0.169153799341516</td>
+<td align="left">135.833647176775</td>
+<td align="left">23.5291444561847</td>
+</tr>
+<tr class="even">
+<td></td>
+<td align="left">3</td>
+<td align="left">0.001</td>
+<td align="left">-0.715895251324096</td>
+<td align="left">2.03371505606251</td>
+<td align="left">0.796234927778929</td>
+<td align="left">0.0772468377681758</td>
+<td align="left">-0.0192878296915474</td>
+<td align="left">0.661263007811562</td>
+<td align="left">0.125338538728444</td>
+<td align="left">0.321864177513411</td>
+<td align="left">0.869795471850937</td>
+<td align="left">0.0900186086409405</td>
+<td align="left">-0.158513513979993</td>
+<td align="left">117.551649109452</td>
+<td align="left">45.0345806575656</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td align="left">4</td>
+<td align="left">0.001</td>
+<td align="left">-0.666993384642204</td>
+<td align="left">1.95781495846916</td>
+<td align="left">0.722863788193366</td>
+<td align="left">0.279318553794357</td>
+<td align="left">0</td>
+<td align="left">0.649888500465765</td>
+<td align="left">0.241673088647192</td>
+<td align="left">0.330267723322934</td>
+<td align="left">0.727460113326783</td>
+<td align="left">0.125138668101311</td>
+<td align="left">-0.134176554805148</td>
+<td align="left">132.096976582581</td>
+<td align="left">34.1470100103225</td>
+</tr>
+<tr class="even">
+<td></td>
+<td align="left">5</td>
+<td align="left">0.001</td>
+<td align="left">-0.547212117903258</td>
+<td align="left">1.97653989692408</td>
+<td align="left">0.792423547210749</td>
+<td align="left">0.109273536001108</td>
+<td align="left">-0.00591947297008052</td>
+<td align="left">0.894891440712508</td>
+<td align="left">0.123239553145203</td>
+<td align="left">0.209676362924503</td>
+<td align="left">1.00994799011325</td>
+<td align="left">0.120682665220763</td>
+<td align="left">-0.125438067285848</td>
+<td align="left">115.556084205108</td>
+<td align="left">46.073344066733</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="instead-of-using-mse-using-pearson-chi-square" class="section level2">
 <h2>instead of using MSE, using pearson chi-square</h2>
+<p>validation</p>
+<pre class="r"><code>x.mat &lt;- model.matrix(diagnosis~., cancer_package[-1])[,-1]
+y.class &lt;- cancer_package$diagnosis
+
+ctrl1 &lt;- trainControl(method = &quot;repeatedcv&quot;, number = 5, repeats = 5)
+lasso.fit &lt;- train(x.mat, y.class,
+                   method = &quot;glmnet&quot;,
+                   tuneGrid = expand.grid(alpha = 1,
+                                          lambda = tuning_grid), 
+                   # preProc = c(&quot;center&quot;, &quot;scale&quot;),
+                   trControl = ctrl1)</code></pre>
+<pre><code>## Warning in train.default(x.mat, y.class, method = &quot;glmnet&quot;, tuneGrid =
+## expand.grid(alpha = 1, : You are trying to do regression and your outcome only
+## has two possible values Are you trying to do classification? If so, use a 2
+## level factor as your outcome column.</code></pre>
+<pre><code>## Warning in nominalTrainWorkflow(x = x, y = y, wts = weights, info = trainInfo, :
+## There were missing values in resampled performance measures.</code></pre>
+<pre class="r"><code>lasso.fit$bestTune</code></pre>
+<pre><code>##   alpha lambda
+## 1     1  0.001</code></pre>
+<pre class="r"><code>coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)</code></pre>
+<pre><code>## 10 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
+##                                    1
+## (Intercept)            -1.5315369841
+## texture_mean            0.0216265192
+## perimeter_mean          0.0156390829
+## area_mean              -0.0007061204
+## smoothness_mean         2.3356763001
+## compactness_mean       -1.2677496145
+## concavity_mean          0.2262630084
+## `concave points_mean`   6.1420082396
+## symmetry_mean           1.0106151661
+## fractal_dimension_mean -1.3592103310</code></pre>
 </div>
 </div>
 

@@ -78,10 +78,10 @@ $$z_i = {\boldsymbol {X_i\beta}}+\frac{y_i-\pi_i}{\pi_i(1-\pi_i)}$$
 Pre-define the tuning parameter sequence $\{\lambda_1,...,\lambda_s\}$, starting point ${\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}$. Here we elaborately explain the optimal process for $\lambda_u$: Using the optimal $\boldsymbol {\beta_{u-1}}$ from last iteration as the warm start. within every iteration, find the optimal $\beta$ coordinate-wise.
 For $\beta_j$ in $t_th$ iteration
 
-$$\beta_j^{(t)} = \left\{\begin{array}{lc} \sum_{i=1}^{n} \omega_i(z_i-\sum_{j=1}^{p}{\boldsymbol {X_i}\beta_j}),&j=0\\s(\beta_j^{(t*)},\lambda_u),&j = 1,2,...,p\end{array}\right.$$
+$$\beta_j^{(t)} = \left\{\begin{array}{lc} \sum_{i=1}^{n} \omega_i(z_i-\sum_{j=1}^{p}{\boldsymbol {X_i}\beta_j}),&j=0\\\frac{s(\beta_j^{(t*)},\lambda_un)}{\sum_{i=1}^{n}\omega_ix_{ij}^2},&j = 1,2,...,p\end{array}\right.$$
 
-$$\beta_j^{(t*)} = \frac{\sum_{i=1}^{n}\omega_ix_{ij}z_{ij}^*}{\sum_{i=1}^{n}\omega_ix_{ij}^2}$$
-$$z_{ij}^* = z_t-\underset {\beta_k\neq0}{\sum_{k = 0}^{j-1}}\beta_k^{(i)}x_{ik}-\underset {\beta_k\neq0}{\sum_{k=j+1}^{p}}\beta_k^{(i-1)}x_{ik}$$
+$$\beta_j^{(t*)} = \sum_{i=1}^{n}\omega_ix_{ij}z_{ij}^*$$
+$$z_{ij}^* = z_i-\underset {\beta_k\neq0}{\sum_{k = 0}^{j-1}}\beta_k^{(i)}x_{ik}-\underset {\beta_k\neq0}{\sum_{k=j+1}^{p}}\beta_k^{(i-1)}x_{ik}$$
 
 ## Cross Validation
 
