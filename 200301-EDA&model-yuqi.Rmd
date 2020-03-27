@@ -2,7 +2,8 @@
 title: "200301-EDA_and_model-yuqi"
 author: "Yuqi Miao ym2771"
 date: "3/1/2020"
-output: html_document
+output: pdf_document
+geometry: "left=0.5cm,right=0.5cm,top=1cm,bottom=1cm"
 ---
 
 ---
@@ -13,7 +14,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
 
 require(survival)
 require(quantreg)
@@ -247,6 +248,18 @@ knitr::kable(x)
 
 ```
 
+
+```{r}
+# cleaning the above x
+library(sjmisc)
+y=as.data.frame(x)
+y_y=rotate_df(y)
+names(y_y)=c("Enter","Fold1","Fold2","Fold3","Fold4","Fold5")
+knitr::kable(y_y)
+```
+
+
+
 ## instead of using MSE, using pearson chi-square 
 
 validation
@@ -255,7 +268,7 @@ validation
 x.mat <- model.matrix(diagnosis~., cancer_package[-1])[,-1]
 y.class <- cancer_package$diagnosis
 
-ctrl1 <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+ctrl1 <- trainControl(method = "cv", number = 5)
 lasso.fit <- train(x.mat, y.class,
                    method = "glmnet",
                    tuneGrid = expand.grid(alpha = 1,
@@ -264,7 +277,13 @@ lasso.fit <- train(x.mat, y.class,
                    trControl = ctrl1)
 
 lasso.fit$bestTune
-coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
+plot(lasso.fit)
+min(lasso.fit$results$RMSE)
+co=coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
+co2=co@x
+
+names(co2)=co@Dimnames[[1]]
+co2 %>% as.data.frame() %>% knitr::kable()
 ```
 
 
