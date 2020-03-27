@@ -112,7 +112,7 @@ result3[nrow(result3),]
 ori_linear=glm(y_matrix~x_matrix[,-1],family=binomial(link='logit'))
 coef_1=coef(ori_linear) %>% as.vector()
 lambda_max=max(abs(coef(ori_linear)))
-lambdas=c(seq(lambda_max,0,by=-0.05),0)
+lambdas=seq(0.5, 0.01,length = 100)
 len=length(lambdas)
 
 # s function
@@ -124,35 +124,32 @@ len=length(lambdas)
   }
   else{return(0)}
     }
-  
+
     
-   S_S=function(solution,lambda) {
-     i=1
-     for(i in 1:length(solution)){
-     if (abs(solution[i])>lambda){
-    if(solution[i]<0){
-      solution[i]=solution[i]+lambda
-    }else{solution[i]=solution[i]-lambda}
-  }
-  else{solution[i]=0}
-       i=i+1
-     }
-     return(solution)
-   }
-   
+   #S_S=function(solution,lambda) {
+    # i=1
+     #for(i in 1:length(solution)){
+     #if (abs(solution[i])>lambda){
+    #if(solution[i]<0){
+     # solution[i]=solution[i]+lambda
+    #}else{solution[i]=solution[i]-lambda}
+  #}
+  #else{solution[i]=0}
+   #    i=i+1
+     #}
+     #return(solution)
+   #}
+   sign(-5)
    
 ```
 
 
 ## solution of betas of each lambda
 ```{r}
-# when lambda=max_lambda
-
-beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
-
 
 # working stuff
  quadratic_appro = function(beta_vec,x_matrix,y_matrix,lambda){
+ 
   x = x_matrix
   y = y_matrix
   pi=exp(x%*%(beta_vec))/(1+exp(x%*%beta_vec))
@@ -161,23 +158,25 @@ beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
   
   y_star1=zi-x[,-1]%*%beta_vec[-1]
   beta=rep(0,11)# to store
-  beta[1]=mean(y_star1)
+  beta[1]=sum(wi*(y_star1))
   beta_update=c(beta[1],beta_vec[2:11])
   i=2
   for(i in 2:11){
     y_star2=zi-x[,-i]%*% beta_update[-i]
     beta[i]=sum(wi*x[,i]*y_star2)
-    beta[i]=S(beta[i],lambda)/sum(wi*(x[,i]^2))
+    beta[i]=S(beta[i],(lambda*length(y)))/sum(wi*(x[,i]^2))
     beta_pre=beta_update
     if(i!=11){beta_update=c(beta_pre[1:i-1],beta[i],beta_pre[(i+1):11])}else
     {beta_update = c(beta_pre[1:i-1],beta[i])}
     i=i+1
   }
+      ## once beta=0, the predictor get abandomed, the next lambdas the coef infront of that predictor is 0
+  
  return(beta_update)
 }
 
  beta_2=rep(0.02,11)
- quadratic_appro(beta_2,x_matrix,y_matrix,lambdas[1])
+ quadratic_appro(beta_2,x_matrix,y_matrix,lambdas[98])
 ```
 
 
@@ -188,14 +187,14 @@ beta_1=c(coef_1[1],rep(0,10))## lasso dosen't shrink interecpt
 lab=c("lambda",str_c("beta",1:11))
 result4=rbind(lab,c("initial",beta_2))## first guess beta=rep(0.02,11)
 i=1
-beta_vec=beta_2
+beta_enter=beta_2
 for(i in 1:len){
-  beta_new=quadratic_appro(beta_vec,x_matrix,y_matrix,lambdas[i])
+  beta_new=quadratic_appro(beta_enter,x_matrix,y_matrix,lambdas[i])
   result4=rbind(result4,c(lambdas[i],beta_new))
-  beta_vec=beta_new
+  beta_enter=beta_new
   i=i+1
 }
-result4 %>% as.tibble()
+q=result4 %>% as.tibble()
 ```
 
 cross-validation
@@ -217,32 +216,32 @@ fold_number=5
 
 
 ```{r}
-k=1
-beta_total=rep(0,11)
+#k=1
+#beta_total=rep(0,11)
 
-for(k in 1:fold_number){
-  trRows=cvSplit[[k]]
-  train_fold=data_use[trRows,]
-  vali_fold= data_use[-trRows,]
+#for(k in 1:fold_number){
+  #trRows=cvSplit[[k]]
+  #train_fold=data_use[trRows,]
+  #vali_fold= data_use[-trRows,]
   
-  x_train = as.matrix(cbind(rep(1,nrow(train_fold)),scale(train_fold[,3:12])))
-  y_train = train_fold$diagnosis
+  #x_train = as.matrix(cbind(rep(1,nrow(train_fold)),scale(train_fold[,3:12])))
+  #y_train = train_fold$diagnosis
 
-  x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
-  y_vali = vali_fold$diagnosis
-  linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
-  beta_new=coef(linear) %>% as.vector()
-  beta_total=cbind(beta_total,beta_new)
-  k=k+1
-}
+  #x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
+  #y_vali = vali_fold$diagnosis
+  #linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
+  #beta_new=coef(linear) %>% as.vector()
+  #beta_total=cbind(beta_total,beta_new)
+  #k=k+1
+#}
 
-max(abs(beta_total))
+#max(abs(beta_total))
 ```
 
 
 
 ```{r}
-lambdas2=c(seq(3,0,by=-0.01),0)
+lambdas2=seq(3, 0.001,length = 100)
 len2=length(lambdas2)
 ```
 
@@ -254,7 +253,7 @@ mse_folds=matrix(rep(NA,fold_number*len2),nrow=fold_number,ncol=len2)
 
 ```{r}
 k=1
-guess=beta_2
+## initial guess = beta_2=rep(0.02,11)
 for(k in 1:fold_number){
   
   trRows=cvSplit[[k]]
@@ -270,13 +269,13 @@ for(k in 1:fold_number){
   #beta_new=coef(linear) %>% as.vector()
   
   lab=c("lambda",str_c("beta",1:11))
- beta_vec=guess
- result5=rbind(lab,c("initial",beta_vec))
+ result5=rbind(lab,c("initial",beta_2))
  i=1
+ beta_enter=beta_2
  for(i in 1:len2){
-   beta_new=quadratic_appro(beta_vec,x_train,y_train,lambdas2[i])
+   beta_new=quadratic_appro(beta_enter,x_train,y_train,lambdas2[i])
   result5=rbind(result5,c(lambdas2[i],beta_new))
-  beta_vec=beta_new
+  beta_enter=beta_new
   i=i+1
 }
   d=2
@@ -289,6 +288,7 @@ for(k in 1:fold_number){
 }
   k=k+1
 }
+result5
 mse_folds
 
 ```
