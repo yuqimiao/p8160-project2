@@ -317,19 +317,40 @@ dataframe1=tibble(mse=mse_final,
   
 ```
 
-
-#```{r}
+# fit optimal lambda with original data
+```{r}
 lab=c("lambda",str_c("beta",1:11))
-beta_vec2=S_S(coef_1[2:11],lambdas2[1])
-result7=rbind(lab,c(lambdas2[1],coef_1[1],beta_vec2))
-i=2
-beta_vec2=c(coef_1[1],beta_vec2)
-for(i in 2:len2){
-  beta_new=quadratic_appro(beta_vec2,x_matrix,y_matrix,lambdas2[i])
+
+result7=rbind(lab,c("initial",beta_2))
+i=1
+beta_vec2=beta_2
+for(i in 1:len2){
+  beta_new=quadratic_coor_wise(beta_vec2,x_matrix,y_matrix,lambdas2[i])
   result7=rbind(result7,c(lambdas2[i],beta_new))
   beta_vec2=beta_new
   i=i+1
 }
 result7 %>% as.tibble() %>% filter(V1==lambdas2[order])
+```
+
+ then use train function, which can produce the same optimal lambda but different coef and MSE
+```{r}
+set.seed(2020)
+cancer_package=data_cancer[,2:12]
+x.mat <- model.matrix(diagnosis~., cancer_package)[,-1]
+y.class <- cancer_package$diagnosis
+
+ctrl1 <- trainControl(method = "cv", number = 5)
+lasso.fit <- train(x.mat, y.class,
+                   method = "glmnet",
+                   tuneGrid = expand.grid(alpha = 1,
+                                          lambda = lambdas2), 
+                   # preProc = c("center", "scale"),
+                   trControl = ctrl1)
+
+lasso.fit$bestTune
+plot(lasso.fit)
+min(lasso.fit$results$RMSE)
+co=coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
 ```
 
