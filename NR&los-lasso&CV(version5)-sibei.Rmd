@@ -138,7 +138,7 @@ len=length(lambdas)
      #}
      #return(solution)
    #}
-   sign(-5)
+
    
 ```
 
@@ -147,13 +147,15 @@ len=length(lambdas)
 ```{r}
 
 # working stuff
- quadratic_coor_wise = function(beta_vec,x_matrix,y_matrix,lambda){
-
+ quadratic_coor_wise_once = function(beta_vec,x_matrix,y_matrix,lambda){
   x = x_matrix
   y = y_matrix
   pi=exp(x%*%(beta_vec))/(1+exp(x%*%beta_vec))
   wi=pi*(1-pi)
   zi=x%*%beta_vec+(y-pi)/wi
+  
+  
+  pre_tar=1/(2*length(y))*(sum(wi*(zi-x%*%beta_vec)^2))+lambda*sum(abs(beta_vec))
   
   y_star1=zi-x[,-1]%*%beta_vec[-1]
   beta=rep(0,11)# to store
@@ -169,31 +171,42 @@ len=length(lambdas)
     {beta_update = c(beta_pre[1:i-1],beta[i])}
     i=i+1
   }
-      ## once beta=0, the predictor get abandomed, the next lambdas the coef infront of that predictor is 0
+ 
+    cur_tar=1/(2*length(y))*(sum(wi*(zi-x%*%beta_update)^2))+lambda*sum(abs(beta_update))
   
- return(beta_update)
+ return(c(beta_update,cur_tar,pre_tar))
 }
 
  beta_2=rep(0.02,11)
- quadratic_coor_wise(beta_2,x_matrix,y_matrix,lambdas[98])
+ quadratic_coor_wise_once(beta_2,x_matrix,y_matrix,lambdas[1])
 ```
 
 
 ```{r}
-# use all x and y to try the  quadratic_appro and get the series of betas
-# below code is useless in cv, just simply try
+## only return the betas that reach the minmun target value for this lambda
+ quadratic_coor_wise_all=function(beta_enter,x_matrix,y_matrix,lambda,tol=exp(-10),max=200){
+  first=quadratic_coor_wise_once(beta_enter,x_matrix,y_matrix,lambda)
+  pre=first[13]
+  cur=first[12]
+  beta_3=first[1:11]
+  iteration=0
+  result4=first
+  names(result4)=c(str_c("beta",1:11),"cur_tar","pre_tar")
+ while((abs(pre-cur)>tol) & iteration < max){ 
+   result_new=quadratic_coor_wise_once(beta_3,x_matrix,y_matrix,lambda)
+   beta_new=result_new[1:11]
+  result4=rbind(result4,result_new)
+  beta_3=beta_new
+  pre=result_new[12]
+  cur=result_new[13]
+  iteration=iteration+1
+ }
+  c1=dim(result4)[1]
+  return(result4[c1,1:11]) }
 
-lab=c("lambda",str_c("beta",1:11))
-result4=rbind(lab,c("initial",beta_2))## first guess beta=rep(0.02,11)
-i=1
-beta_enter=beta_2
-for(i in 1:len){
-  beta_new=quadratic_coor_wise(beta_enter,x_matrix,y_matrix,lambdas[i])
-  result4=rbind(result4,c(lambdas[i],beta_new))
-  beta_enter=beta_new
-  i=i+1
-}
-q=result4 %>% as.tibble()
+beta_enter=rep(0.02,11)
+quadratic_coor_wise_all(beta_enter,x_matrix,y_matrix,lambdas[100])
+
 ```
 
 cross-validation
@@ -212,30 +225,6 @@ str(cvSplit)
 fold_number=5
 ```
 
-
-
-```{r}
-#k=1
-#beta_total=rep(0,11)
-
-#for(k in 1:fold_number){
-  #trRows=cvSplit[[k]]
-  #train_fold=data_use[trRows,]
-  #vali_fold= data_use[-trRows,]
-  
-  #x_train = as.matrix(cbind(rep(1,nrow(train_fold)),scale(train_fold[,3:12])))
-  #y_train = train_fold$diagnosis
-
-  #x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
-  #y_vali = vali_fold$diagnosis
-  #linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
-  #beta_new=coef(linear) %>% as.vector()
-  #beta_total=cbind(beta_total,beta_new)
-  #k=k+1
-#}
-
-#max(abs(beta_total))
-```
 
 
 
@@ -264,30 +253,18 @@ for(k in 1:fold_number){
 
   x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
   y_vali = vali_fold$diagnosis
-  #linear=glm(y_train~x_train[,-1],family=binomial(link='logit'))
-  #beta_new=coef(linear) %>% as.vector()
-  
-  lab=c("lambda",str_c("beta",1:11))
- result5=rbind(lab,c("initial",beta_2))
- i=1
- beta_enter=beta_2
- for(i in 1:len2){
-   beta_new=quadratic_coor_wise(beta_enter,x_train,y_train,lambdas2[i])
-  result5=rbind(result5,c(lambdas2[i],beta_new))
-  beta_enter=beta_new
-  i=i+1
-}
-  d=2
-  for(d in 2:(len2+1)){
-  beta_cor=as.numeric(result5[d,2:12])
-  theta= x_vali%*% t(t(beta_cor))
+ 
+  d=1
+  for(d in 1:(len2)){
+  result=quadratic_coor_wise_all(beta_enter,x_train,y_train,lambdas[d])
+  theta= x_vali%*% t(t(result))
   y_fit=exp(theta)/(1+exp(theta))
-  mse_folds[k,d-1]=mse(y_vali,y_fit)
+  mse_folds[k,d]=mse(y_vali,y_fit)
   d=d+1
 }
   k=k+1
 }
-result5
+
 mse_folds
 
 ```
@@ -295,8 +272,10 @@ mse_folds
 
 ```{r}
 mse_final=c(rep(NA,len2))
+i=1
 for(i in 1:len2){
-  mse_final[i]=mean(mse_folds[,i])}
+  mse_final[i]=mean(mse_folds[,i])
+  i+1}
 
 mse_final
 
@@ -317,23 +296,7 @@ dataframe1=tibble(mse=mse_final,
   
 ```
 
-# fit optimal lambda with original data
-```{r}
-lab=c("lambda",str_c("beta",1:11))
 
-result7=rbind(lab,c("initial",beta_2))
-i=1
-beta_vec2=beta_2
-for(i in 1:len2){
-  beta_new=quadratic_coor_wise(beta_vec2,x_matrix,y_matrix,lambdas2[i])
-  result7=rbind(result7,c(lambdas2[i],beta_new))
-  beta_vec2=beta_new
-  i=i+1
-}
-result7 %>% as.tibble() %>% filter(V1==lambdas2[order])
-```
-
- then use train function, which can produce the same optimal lambda but different coef and MSE
 ```{r}
 set.seed(2020)
 cancer_package=data_cancer[,2:12]
@@ -353,4 +316,5 @@ plot(lasso.fit)
 min(lasso.fit$results$RMSE)
 co=coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
 ```
+
 
