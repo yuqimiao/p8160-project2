@@ -155,8 +155,6 @@ len=length(lambdas)
   zi=x%*%beta_vec+(y-pi)/wi
   
   
-  pre_tar=1/(2*length(y))*(sum(wi*(zi-x%*%beta_vec)^2))+lambda*sum(abs(beta_vec))
-  
   y_star1=zi-x[,-1]%*%beta_vec[-1]
   beta=rep(0,11)# to store
   beta[1]=sum(wi*y_star1)/sum(wi)
@@ -174,7 +172,7 @@ len=length(lambdas)
  
     cur_tar=1/(2*length(y))*(sum(wi*(zi-x%*%beta_update)^2))+lambda*sum(abs(beta_update))
   
- return(c(beta_update,cur_tar,pre_tar))
+ return(c(beta_update,cur_tar))
 }
 
  beta_2=rep(0.02,11)
@@ -185,21 +183,26 @@ len=length(lambdas)
 ```{r}
 ## only return the betas that reach the minmun target value for this lambda
  quadratic_coor_wise_all=function(beta_enter,x_matrix,y_matrix,lambda,tol=exp(-10),max=200){
-  first=quadratic_coor_wise_once(beta_enter,x_matrix,y_matrix,lambda)
-  pre=first[13]
-  cur=first[12]
-  beta_3=first[1:11]
+  x = x_matrix
+  y = y_matrix
+  pi=exp(x%*%(beta_enter))/(1+exp(x%*%beta_enter))
+  wi=pi*(1-pi)
+  zi=x%*%beta_enter+(y-pi)/wi
+  
+  cur=1/(2*length(y))*(sum(wi*(zi-x%*%beta_enter)^2))+lambda*sum(abs(beta_enter))
+  pre=-Inf
+  beta_3=beta_enter
   iteration=0
-  result4=first
-  names(result4)=c(str_c("beta",1:11),"cur_tar","pre_tar")
- while((abs(pre-cur)>tol) & iteration < max){ 
-   result_new=quadratic_coor_wise_once(beta_3,x_matrix,y_matrix,lambda)
+  result4=c(beta_enter,cur)
+  names(result4)=c(str_c("beta",0:10),"cur_tar")
+ while((abs(cur-pre)>tol) & iteration < max){
+   pre=cur
+  iteration=iteration+1
+   result_new=quadratic_coor_wise_once(beta_3,x,y,lambda)
    beta_new=result_new[1:11]
+   cur=result_new[12]
   result4=rbind(result4,result_new)
   beta_3=beta_new
-  pre=result_new[12]
-  cur=result_new[13]
-  iteration=iteration+1
  }
   c1=dim(result4)[1]
   return(result4[c1,1:11]) }
@@ -236,11 +239,13 @@ len2=length(lambdas2)
 create empty mse_folder to hold the mse in each lambda and each fold
 ```{r}
 mse_folds=matrix(rep(NA,fold_number*len2),nrow=fold_number,ncol=len2)
+auc_folds=matrix(rep(NA,fold_number*len2),nrow=fold_number,ncol=len2)
 ```
 
 
 ```{r}
 k=1
+library(pROC)
 ## initial guess = beta_2=rep(0.02,11)
 for(k in 1:fold_number){
   
@@ -266,7 +271,6 @@ for(k in 1:fold_number){
 }
 
 mse_folds
-
 ```
 
 
@@ -278,6 +282,7 @@ for(i in 1:len2){
   i+1}
 
 mse_final
+
 
 
 mins=min(mse_final)
