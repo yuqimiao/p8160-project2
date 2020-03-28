@@ -119,10 +119,35 @@ summary(cancer_fit)
 1. normalize or standardize?
 2. how to standardize easily?
 
+```{r}
+auc = function(yi,pi_hat){
+  auc = c()
+  for (i in seq(dim(pi_hat)[2])){
+    c = tibble(pi_hat = pi_hat[,i],yi = yi)
+    m = sum(yi==1)
+    n = length(yi)-m
+    c = 
+      c %>% 
+      arrange(pi_hat) %>% 
+      mutate(order = seq_along(pi_hat)) %>% 
+      group_by(pi_hat) %>% 
+      mutate(mean_order = mean(order))
+    pos_order = c %>% filter(yi == 1) %>% pull(mean_order)
+    auc = c(auc,(sum(pos_order)-m*(m+1)/2)/(m*n))
+  }
+  
+  
+  return(auc)
+}
+yi = c(0,1,0,1,0,0,0,1)
+pi = matrix(rep(rep(c(0.2,0.000001,0.3,0.4),2),2),ncol = 2 )
+auc(yi,pi)
+```
+
 ##
 ```{r}
 #lambda_max = max(abs(NR_coeff)) ## warm start
-tuning_grid = seq(14, 0.001,length = 100) ## tuning seq
+tuning_grid = seq(3, 0.001,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -147,7 +172,7 @@ tuning_grid = seq(14, 0.001,length = 100) ## tuning seq
 lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200){
   ## create fold
   folds = createFolds(data$response,k = k, returnTrain = T)
-  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, g.stat_tr = Inf, g.stat_te = Inf)
+  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, auc_te = 0, g.stat_tr = Inf, g.stat_te = Inf)
   ## lasso coord des for train data
   for (i in 1:k) {
     tr_rows = folds[[i]]
@@ -188,6 +213,10 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
            ## dim(455,1), weighted obs on jth row
            tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j)
            lambda_n = lambda*dim(x_tr)[1] 
+           if(j == 1){
+             beta_pre[j] = tmp/sum(w_vec)
+           }
+             
            if (j>=2) {
              if (abs(tmp)>lambda_n) {
               if(tmp > 0) {tmp = tmp - lambda_n}
@@ -215,26 +244,29 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   beta_lambda = res %>% 
     group_by(lambda) %>% 
     filter(cur_target == max(cur_target)) %>%  
-    dplyr::select(contains("beta"))
+    dplyr::select(lambda,contains("beta"))
   beta_lambda_m = as.matrix(beta_lambda[2:dim(beta_lambda)[2]]) # dim = (194, 11)
   ## use train dataset to choose lambda
   pi_hat = exp(x_tr %*% t(beta_lambda_m))/(1+exp(x_tr %*% t(beta_lambda_m)))
   #residual_lambda = rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat
-  #MSE_train = as.vector(rowSums(t(residual_lambda^2)))
+  # MSE_train = as.vector(rowSums(t(residual_lambda^2)))
+  ## auc calculation
+  auc_tr = auc(y_tr,pi_hat = pi_hat)
   g.res = (rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat)/sqrt(pi_hat*(1-pi_hat))
   g.stat_tr = as.vector(rowSums(t(g.res^2)))
-  best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr)) %>% 
+  best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr,auc_tr = auc_tr)) %>% 
     filter(g.stat_tr == min(g.stat_tr)) %>% filter(lambda == min(lambda))  
   best_result = best_result[1,]
   # use test datasets to evaluate
-  best_result_m = as.matrix(best_result[3:dim(best_result)[2]-1])
+  best_result_m = as.matrix(best_result[2:(dim(best_result)[2]-2)])
   pi_hat_te = exp(x_te %*% t(best_result_m))/(1+exp(x_te %*% t(best_result_m)))
-  #residual_test = y_te - pi_hat_test
+  #residual_test = y_te - pi_hat_te
   #MSE_test = as.vector(rowSums(t(residual_test^2)))
+  auc_te = auc(y_te,pi_hat_te)
   g.res_te = (y_te - pi_hat_te)/sqrt(pi_hat_te*(1-pi_hat_te))
   g.stat_te = as.vector(rowSums(t(g.res_te^2)))
   
-  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[3:dim(best_result)[2]-1], g.stat_tr = best_result$g.stat_tr, g.stat_te = g.stat_te))
+  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[2:dim(best_result)[2]-2], auc_te = auc_te,g.stat_tr = best_result$g.stat_tr,g.stat_te = g.stat_te))
   #cv_result = as.tibble(cv_result)  
   }
   
@@ -244,7 +276,7 @@ x = lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 5,tune_grid =
 
 knitr::kable(x)
 
-
+dim(best_result_m)
 ```
 
 ## instead of using MSE, using pearson chi-square 
