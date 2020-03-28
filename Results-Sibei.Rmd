@@ -1,0 +1,57 @@
+---
+title: "Results"
+author: "Sibei Liu sl4660"
+date: "2020/3/27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Results
+## Newton-Raphson
+
+After doing the Newton-Raphson modified with step and direction, the estimation of coefficients are:
+
+\begin{center}
+\includegraphics{./results/NR.JPG}
+\end{center}
+
+\begin{center}
+Table 1. Estimated coefficients under Newton-Raphson method
+\end{center}
+
+## Coordinate-Wise
+
+From the New-Raphson results, the maximum coefficent is 14.So the range of $\lambda$ we tried is (0.01,14) with length 100. The initial guess of all $\beta$ including the intercept is 0.02. The Pearson-Chi square statistics(g.statistics) was introduced to compare the models. So in the 5-Fold Cross Validation. In each fold, the range of $\lambda$ would be tried and selected one optimal $\lambda$ with  minimum G-statistics. Below is the results:
+
+\begin{center}
+\includegraphics{./results/CV-g.sta.JPG}
+\end{center}
+
+\begin{center}
+Table 2. Cross validatin results
+\end{center}
+
+In all 5 folds, the optimal $\lambda$ is 0.001, with similar $\beta_s$ in each fold. If we use the train function in the caret package, meaning the RMSE is the model selection criteria, the train function still produce the same optimal $\lambda$ result as following Fig 2.
+
+\begin{center}
+\includegraphics{./results/train.jpeg}
+\end{center}
+
+\begin{center}
+Fig 2. MSE vs $\lambda$
+\end{center}
+
+From Fig.2, we can tell that the MSE has an upward trend with the increase of $\lambda$. So when $\lambda$=0.001, it has smallest RMSE=0.2807 and MSE=0.0784. When the optimal $\lambda$=0.01 is applied on original predictors and response. the coefficients are as follow:
+
+\begin{center}
+\includegraphics{./results/coef_of_optimal_lambda.JPG}
+\end{center}
+
+\begin{center}
+Table 3. The coefficients of final model when $\lambda$ is optimal
+\end{center}
+
+Surprisingly, none of coefficients are shrank into 0.But compared the coefficients in Newton-Raphson, the shrinkages on the predictor “radius_mean”, “area_mean are large”. But, unexpectedly, the coefficient of “concave point mean” inflated to 6.14
