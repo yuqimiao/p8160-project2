@@ -148,7 +148,7 @@ auc(yi,pi)
 ##
 ```{r}
 #lambda_max = max(abs(NR_coeff)) ## warm start
-tuning_grid = seq(3, 0.01,length = 100) ## tuning seq
+tuning_grid = seq(3, 0.001,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -173,7 +173,7 @@ tuning_grid = seq(3, 0.01,length = 100) ## tuning seq
 lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200){
   ## create fold
   folds = createFolds(data$response,k = k, returnTrain = T)
-  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, auc_te = 0, g.stat_tr = Inf, g.stat_te = Inf,MSE_test = Inf)
+  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, auc_te = 0, g.stat_tr = Inf, g.stat_te = Inf)
   ## lasso coord des for train data
   for (i in 1:k) {
     tr_rows = folds[[i]]
@@ -245,29 +245,29 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   beta_lambda = res %>% 
     group_by(lambda) %>% 
     filter(cur_target == max(cur_target)) %>%  
-    dplyr::select(contains("beta"))
+    dplyr::select(lambda,contains("beta"))
   beta_lambda_m = as.matrix(beta_lambda[2:dim(beta_lambda)[2]]) # dim = (194, 11)
   ## use train dataset to choose lambda
   pi_hat = exp(x_tr %*% t(beta_lambda_m))/(1+exp(x_tr %*% t(beta_lambda_m)))
-  residual_lambda = rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat
-  MSE_tr = as.vector(rowSums(t(residual_lambda^2)))
+  #residual_lambda = rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat
+  # MSE_train = as.vector(rowSums(t(residual_lambda^2)))
   ## auc calculation
   auc_tr = auc(y_tr,pi_hat = pi_hat)
   g.res = (rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat)/sqrt(pi_hat*(1-pi_hat))
   g.stat_tr = as.vector(rowSums(t(g.res^2)))
-  best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr,auc_tr = auc_tr,MSE_tr = MSE_tr)) %>% 
+  best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr,auc_tr = auc_tr)) %>% 
     filter(auc_tr == max(auc_tr)) %>% filter(lambda == min(lambda))  
   best_result = best_result[1,]
   # use test datasets to evaluate
-  best_result_m = as.matrix(best_result[2:(dim(best_result)[2]-3)])
+  best_result_m = as.matrix(best_result[2:(dim(best_result)[2]-2)])
   pi_hat_te = exp(x_te %*% t(best_result_m))/(1+exp(x_te %*% t(best_result_m)))
-  residual_test = y_te - pi_hat_te
-  MSE_test = as.vector(rowSums(t(residual_test^2)))
+  #residual_test = y_te - pi_hat_te
+  #MSE_test = as.vector(rowSums(t(residual_test^2)))
   auc_te = auc(y_te,pi_hat_te)
   g.res_te = (y_te - pi_hat_te)/sqrt(pi_hat_te*(1-pi_hat_te))
   g.stat_te = as.vector(rowSums(t(g.res_te^2)))
   
-  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[2:dim(best_result)[2]-2], auc_te = auc_te,g.stat_tr = best_result$g.stat_tr,g.stat_te = g.stat_te,MSE_test = MSE_test))
+  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[2:dim(best_result)[2]-2], auc_te = auc_te,g.stat_tr = best_result$g.stat_tr,g.stat_te = g.stat_te))
   #cv_result = as.tibble(cv_result)  
   }
   
