@@ -2,7 +2,7 @@
 title: "Sibei"
 author: "Sibei Liu sl4660"
 date: "2020/3/19"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -11,12 +11,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 $$\mathbf X=\begin{pmatrix}1&x_{11}&...&x_{1p}\\1&x_{21}&...&x_{2P}\\...&...&...&...\\1&x_{n1}&...&x_{np}\end{pmatrix}_{n\times(1+p)}=\begin{pmatrix}\mathbf x_1\\\mathbf x_2\\...\\\mathbf x_n\end{pmatrix}     \ \ \ \ \  \mathbf Y=\begin{pmatrix}y_1\\y_2\\...\\y_n\end{pmatrix}_{n\times 1} \ \ \ \boldsymbol{\beta}=\begin{pmatrix}\beta_0\\\beta_1\\...\\\beta_p\end{pmatrix}_{(1+p)\times1} $$
 Note: $\mathbf x_n=\begin{pmatrix}1&x_{n1}&...&x_{np}\end{pmatrix}_{ 1\times (p+1)}$
-
 By using the logit link, we can get the logistic regression:
 $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta= \theta_i\ \\ \boldsymbol \theta=\begin{pmatrix}\theta_1\\\theta_2\\...\\\theta_n\end{pmatrix}$$
 The density function is :
 $$f_Y(y_i)=\pi_i^{y_i}(1-\pi_i)^{1-y_i}$$
-
 Log likelihood function:
 
 $$l(\mathbf Y,\boldsymbol\pi)=\sum_{i=1}^n l(y_i,\pi_i)=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))\\=\sum_{i=1}^n(y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i))$$
@@ -28,7 +26,7 @@ $$\mathbf x_i \boldsymbol \beta= \theta_i \ \ \ \ \ \ \ \mathbf X\boldsymbol \be
 Take $\beta$ into log likelihood function:
 $$l(\mathbf Y,\boldsymbol\beta)=\sum_{i=1}^n(y_i\mathbf x_i\boldsymbol \beta-log(1+e^{\mathbf x_i\boldsymbol \beta}))\\=Y^T\mathbf X\boldsymbol \beta-\sum_{i=1}^nlog(1+e^{\mathbf x_i\boldsymbol \beta}))$$
 Take the first derivative of log likelihood function about $\boldsymbol \beta$ to get the gradient:
-$$\nabla f(\mathbf Y,\boldsymbol\theta)=(\frac{\partial\boldsymbol \theta}{\partial \boldsymbol\beta})^T\times \frac{\partial l(y,\beta)}{\partial \boldsymbol \theta}\\=\mathbf X^T(\mathbf Y-\frac{e^\boldsymbol \theta}{1+e^\boldsymbol \theta})$$
+$$\nabla f(\mathbf Y,\boldsymbol\theta)=(\frac{\partial\boldsymbol \theta}{\partial \boldsymbol\beta})^T\times \frac{\partial l(\mathbf Y,\boldsymbol\beta)}{\partial \boldsymbol \theta}\\=\mathbf X^T(\mathbf Y-\frac{e^{\boldsymbol \theta}}{1+e^{\boldsymbol\theta}})$$
 
 Take derivative of score function to get the Hessian:
 $$\nabla^2 f(\mathbf Y,\boldsymbol\theta)=-\mathbf X^Tdiag(\pi_i(1-\pi_i))\mathbf X$$
