@@ -170,13 +170,13 @@ len=length(lambdas)
     i=i+1
   }
  
-    cur_tar=1/(2*length(y))*(sum(wi*(zi-x%*%beta_update)^2))+lambda*sum(abs(beta_update))
+    cur_tar=1/(2*length(y))*(sum(wi*(zi-x%*%beta_update)^2))+lambda*sum(abs(beta_update[-1]))
   
  return(c(beta_update,cur_tar))
 }
 
  beta_2=rep(0.02,11)
- quadratic_coor_wise_once(beta_2,x_matrix,y_matrix,lambdas[1])
+ quadratic_coor_wise_once(beta_2,x_matrix,y_matrix,0.01)
 ```
 
 
@@ -189,13 +189,13 @@ len=length(lambdas)
   wi=pi*(1-pi)
   zi=x%*%beta_enter+(y-pi)/wi
   
-  cur=1/(2*length(y))*(sum(wi*(zi-x%*%beta_enter)^2))+lambda*sum(abs(beta_enter))
-  pre=-Inf
+  cur=1/(2*length(y))*(sum(wi*(zi-x%*%beta_enter)^2))+lambda*sum(abs(beta_enter[-1]))
+  pre=Inf
   beta_3=beta_enter
   iteration=0
   result4=c(beta_enter,cur)
   names(result4)=c(str_c("beta",0:10),"cur_tar")
- while((abs(cur-pre)>tol) & iteration < max){
+ while((abs(cur-pre)>tol)&(cur<pre) & iteration < max){
    pre=cur
   iteration=iteration+1
    result_new=quadratic_coor_wise_once(beta_3,x,y,lambda)
@@ -205,10 +205,10 @@ len=length(lambdas)
   beta_3=beta_new
  }
   c1=dim(result4)[1]
-  return(result4[c1,1:11]) }
+  return(result4[c1-1,1:11]) }
 
 beta_enter=rep(0.02,11)
-quadratic_coor_wise_all(beta_enter,x_matrix,y_matrix,lambdas[100])
+quadratic_coor_wise_all(beta_enter,x_matrix,y_matrix,0)
 
 ```
 
@@ -217,7 +217,7 @@ cross-validation
 
 data_use=data_cancer 
 
-set.seed(2020)
+set.seed(2019)
 library(caret)
 library(ModelMetrics)
 #Split data to 5 fold
@@ -232,7 +232,7 @@ fold_number=5
 
 
 ```{r}
-lambdas2=seq(14, 0.001,length = 100)
+lambdas2=seq(3, 0,length = 100)
 len2=length(lambdas2)
 ```
 
@@ -303,7 +303,7 @@ dataframe1=tibble(mse=mse_final,
 
 
 ```{r}
-set.seed(2020)
+set.seed(2019)
 cancer_package=data_cancer[,2:12]
 x.mat <- model.matrix(diagnosis~., cancer_package)[,-1]
 y.class <- cancer_package$diagnosis
@@ -312,7 +312,7 @@ ctrl1 <- trainControl(method = "cv", number = 5)
 lasso.fit <- train(x.mat, y.class,
                    method = "glmnet",
                    tuneGrid = expand.grid(alpha = 1,
-                                          lambda = lambdas2), 
+                                          lambda = seq(3,-1,length=100)), 
                    # preProc = c("center", "scale"),
                    trControl = ctrl1)
 
