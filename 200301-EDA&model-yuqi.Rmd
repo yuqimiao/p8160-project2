@@ -195,7 +195,7 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
       z_vec = theta_vec + (y_tr - pi_vec)/w_vec # dim = (455,1), working response for every obs 
       w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
       #w_res_vec = w_res_vec[!is.nan(w_res_vec)]
-      cur_target = (1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
+      cur_target = (1/2*(n_tr))*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
       pre_target = -Inf
       time = 0
       names(beta_vec) = paste("beta_",0:10, sep = "")
@@ -238,7 +238,7 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
         # dim = (455,1), working response for every obs 
         w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
         w_res_vec = w_res_vec[!is.nan(w_res_vec)]
-        cur_target = (1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
+        cur_target = (1/(2*n_tr))*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
         res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
       }
     }
@@ -246,7 +246,7 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   res = as.tibble(res)
   beta_lambda = res %>% 
     group_by(lambda) %>% 
-    filter(cur_target == max(cur_target)) %>%  
+    filter(cur_target == min(cur_target)) %>%  
     dplyr::select(contains("beta"))
   beta_lambda_m = as.matrix(beta_lambda[2:dim(beta_lambda)[2]]) # dim = (194, 11)
   ## use train dataset to choose lambda
