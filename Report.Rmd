@@ -96,7 +96,19 @@ $$G = \sum_{i=1}^{n}\frac{y_i-{\widehat \pi_i}}{{\widehat \pi_i}(1-{\widehat \pi
 By taking average of above 2 statistics of 5 fold, we get the final index to evaluate the model fitting.
 
 ## Results
+### Newton-Raphson
 
+After doing the Newton-Raphson modified with step and direction, the estimation of coefficients are:
+
+\begin{center}
+\includegraphics{./results/NR.JPG}
+\end{center}
+
+\begin{center}
+Table 1. Estimated coefficients under Newton-Raphson method
+\end{center}
+
+### Coordinate-Wise
 
 
 
