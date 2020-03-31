@@ -33,7 +33,7 @@ library(patchwork)
 ```
 
 ## data and manipulation
-```{r}
+```{r,,include=FALSE}
 cancer = read_csv("breast-cancer.csv") %>% 
   mutate(diagnosis = as.numeric(factor(diagnosis, levels = c("B","M"), labels = c(0,1)))-1) %>% 
   mutate(radius_mean = scale(radius_mean))
@@ -47,7 +47,7 @@ names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
 
 $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta$$
 
-```{r}
+```{r,include=FALSE}
 hessian_gradient_log = function(data, beta_vec){
   y = as.matrix(data%>% select(last_col()))
   x = as.matrix(data[,1:dim(data)[2]-1])
@@ -66,7 +66,7 @@ a = hessian_gradient_log(cancer_scale, rep(0.02,11))
 
 ```
 
-```{r}
+```{r,include=FALSE}
 NR = function(data, beta_start,tol = 1e-10, max = 200){
   i = 0
   cur = beta_start
@@ -109,7 +109,7 @@ NR_coeff =  NR_result[dim(NR_result)[1], -1:-2]
 ```
 
 # validation using glm
-```{r}
+```{r,,include=FALSE}
 cancer_fit = glm(response~., data = cancer_scale,family = binomial(link = "logit"))
 summary(cancer_fit)
 
@@ -121,7 +121,7 @@ summary(cancer_fit)
 1. normalize or standardize?
 2. how to standardize easily?
 
-```{r}
+```{r,,include=FALSE}
 auc = function(yi,pi_hat){
   auc = c()
   for (i in seq(dim(pi_hat)[2])){
@@ -147,7 +147,8 @@ auc(yi,pi)
 ```
 
 ##
-```{r}
+```{r,include=FALSE}
+set.seed(2019)
 #lambda_max = max(abs(NR_coeff)) ## warm start
 tuning_grid = seq(3, 0,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
