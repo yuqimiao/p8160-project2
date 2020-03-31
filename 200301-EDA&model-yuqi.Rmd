@@ -28,6 +28,7 @@ set.seed(2019)
 ```{r, include = F}
 library(tidyverse)
 library(caret)
+library(patchwork)
 
 ```
 
@@ -148,7 +149,7 @@ auc(yi,pi)
 ##
 ```{r}
 #lambda_max = max(abs(NR_coeff)) ## warm start
-tuning_grid = seq(3, 0.01,length = 100) ## tuning seq
+tuning_grid = seq(3, 0,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -173,7 +174,7 @@ tuning_grid = seq(3, 0.01,length = 100) ## tuning seq
 lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200){
   ## create fold
   folds = createFolds(data$response,k = k, returnTrain = T)
-  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, auc_te = 0, g.stat_tr = Inf, g.stat_te = Inf,MSE_test = Inf)
+  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, g.stat_tr = Inf,auc_te = 0,  g.stat_te = Inf,MSE_test = Inf)
   ## lasso coord des for train data
   for (i in 1:k) {
     tr_rows = folds[[i]]
@@ -255,7 +256,8 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   auc_tr = auc(y_tr,pi_hat = pi_hat)
   g.res = (rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat)/sqrt(pi_hat*(1-pi_hat))
   g.stat_tr = as.vector(rowSums(t(g.res^2)))
-  best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr,auc_tr = auc_tr,MSE_tr = MSE_tr)) %>% 
+  result_tr = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr,auc_tr = auc_tr,MSE_tr = MSE_tr))
+  best_result =  result_tr %>% 
     filter(auc_tr == max(auc_tr)) %>% filter(lambda == min(lambda))  
   best_result = best_result[1,]
   # use test datasets to evaluate
@@ -267,24 +269,39 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   g.res_te = (y_te - pi_hat_te)/sqrt(pi_hat_te*(1-pi_hat_te))
   g.stat_te = as.vector(rowSums(t(g.res_te^2)))
   
-  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[2:dim(best_result)[2]-2], auc_te = auc_te,g.stat_tr = best_result$g.stat_tr,g.stat_te = g.stat_te,MSE_test = MSE_test))
+  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[2:(dim(best_result)[2]-3)],g.stat_tr = best_result$g.stat_tr, auc_te = auc_te,g.stat_te = g.stat_te,MSE_test = MSE_test))
   #cv_result = as.tibble(cv_result)  
   }
   
-  return(cv_result)
+  return(list(cv_result = unnest(as.tibble(cv_result)),res = res, result_tr= result_tr , best_result = best_result))
 }
 x = lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 5,tune_grid = tuning_grid,max = 200)
 
-knitr::kable(x)
+knitr::kable(x$cv_result,digits = 3)
+
+x
+
+g1 = x$result_tr %>% 
+  ggplot(aes(x = lambda, y = auc_tr))+
+  geom_line()
+
+g2 = x$result_tr %>% 
+  ggplot(aes(x = lambda, y = MSE_tr))+
+  geom_line()
+
+g3 = x$result_tr %>% 
+  ggplot(aes(x = lambda, y = g.stat_tr))+
+  geom_line()
 
 
+g1+g2+g3
 ```
 
 
 ```{r}
 # cleaning the above x
 library(sjmisc)
-y=as.data.frame(x)
+y=as.data.frame(x$cv_result)
 y_y=rotate_df(y)
 names(y_y)=c("Enter","Fold1","Fold2","Fold3","Fold4","Fold5")
 knitr::kable(y_y)
@@ -297,19 +314,19 @@ knitr::kable(y_y)
 validation
 
 ```{r}
-# x.mat <- model.matrix(diagnosis~., cancer_package[-1])[,-1]
-# y.class <- cancer_package$diagnosis
-# 
-# ctrl1 <- trainControl(method = "cv", number = 5)
-# lasso.fit <- train(x.mat, y.class,
-#                    method = "glmnet",
-#                    tuneGrid = expand.grid(alpha = 1,
-#                                           lambda = tuning_grid), 
-#                    # preProc = c("center", "scale"),
-#                    trControl = ctrl1)
-# 
-# lasso.fit$bestTune
-# plot(lasso.fit)
+x.mat <- model.matrix(diagnosis~., cancer_package[-1])[,-1]
+y.class <- cancer_package$diagnosis
+
+ctrl1 <- trainControl(method = "cv", number = 5)
+lasso.fit <- train(x.mat, y.class,
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 1,
+                                         lambda = tuning_grid), 
+                  # preProc = c("center", "scale"),
+                  trControl = ctrl1)
+
+lasso.fit$bestTune
+plot(lasso.fit)
 # min(lasso.fit$results$RMSE)
 # co=coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
 # co2=co@x
