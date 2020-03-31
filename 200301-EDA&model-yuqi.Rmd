@@ -321,7 +321,7 @@ ctrl1 <- trainControl(method = "cv", number = 5)
 lasso.fit <- train(x.mat, y.class,
                   method = "glmnet",
                   tuneGrid = expand.grid(alpha = 1,
-                                         lambda = tuning_grid), 
+                                         lambda = seq(3, -1,length = 100)), 
                   # preProc = c("center", "scale"),
                   trControl = ctrl1)
 
