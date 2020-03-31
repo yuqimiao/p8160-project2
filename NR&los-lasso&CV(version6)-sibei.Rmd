@@ -123,22 +123,6 @@ len=length(lambdas)
   }
   else{return(0)}
     }
-
-    
-   #S_S=function(solution,lambda) {
-    # i=1
-     #for(i in 1:length(solution)){
-     #if (abs(solution[i])>lambda){
-    #if(solution[i]<0){
-     # solution[i]=solution[i]+lambda
-    #}else{solution[i]=solution[i]-lambda}
-  #}
-  #else{solution[i]=0}
-   #    i=i+1
-     #}
-     #return(solution)
-   #}
-
    
 ```
 
@@ -169,14 +153,18 @@ len=length(lambdas)
     {beta_update = c(beta_pre[1:i-1],beta[i])}
     i=i+1
   }
- 
+ ## update working staff to get the value of target function
+  pi=exp(x%*%(beta_update))/(1+exp(x%*%beta_update))
+  wi=pi*(1-pi)
+  zi=x%*%beta_update+(y-pi)/wi
+  
     cur_tar=1/(2*length(y))*(sum(wi*(zi-x%*%beta_update)^2))+lambda*sum(abs(beta_update[-1]))
   
  return(c(beta_update,cur_tar))
 }
 
  beta_2=rep(0.02,11)
- quadratic_coor_wise_once(beta_2,x_matrix,y_matrix,0.01)
+ quadratic_coor_wise_once(beta_2,x_matrix,y_matrix,0)
 ```
 
 
@@ -195,7 +183,7 @@ len=length(lambdas)
   iteration=0
   result4=c(beta_enter,cur)
   names(result4)=c(str_c("beta",0:10),"cur_tar")
- while((abs(cur-pre)>tol)&(cur<pre) & iteration < max){
+ while((abs(cur-pre)>tol) &(cur<pre)& (iteration < max)){
    pre=cur
   iteration=iteration+1
    result_new=quadratic_coor_wise_once(beta_3,x,y,lambda)

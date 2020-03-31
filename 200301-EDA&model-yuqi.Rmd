@@ -283,15 +283,15 @@ x
 
 g1 = x$result_tr %>% 
   ggplot(aes(x = lambda, y = auc_tr))+
-  geom_line()
+  geom_line()+theme_bw()
 
 g2 = x$result_tr %>% 
   ggplot(aes(x = lambda, y = MSE_tr))+
-  geom_line()
+  geom_line()+theme_bw()
 
 g3 = x$result_tr %>% 
   ggplot(aes(x = lambda, y = g.stat_tr))+
-  geom_line()
+  geom_line()+theme_bw()
 
 
 g1+g2+g3
