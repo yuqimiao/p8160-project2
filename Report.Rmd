@@ -69,7 +69,7 @@ To select variables and increase the prediction efficiency, lasso was integrated
 The target function:
 
 $$min\{-l({\boldsymbol \beta})+\lambda\sum_{j=1}^{p}|\beta_j| \}$$
-$$l({\boldsymbol \beta}) = -\frac{1}{2n}\sum_{i=1}^{n}\omega_i(z_i-{\boldsymbol {X_i\beta}})$$
+$$l({\boldsymbol \beta}) = -\frac{1}{2n}\sum_{i=1}^{n}\omega_i(z_i-{\boldsymbol {X_i\beta}})^2$$
 
 $$\pi_i = \frac{exp({\boldsymbol {X_i\beta}})}{1+exp({\boldsymbol {X_i\beta}})}$$
 
@@ -80,16 +80,16 @@ $$z_i = {\boldsymbol {X_i\beta}}+\frac{y_i-\pi_i}{\pi_i(1-\pi_i)}$$
 Pre-define the tuning parameter sequence $\{\lambda_1,...,\lambda_s\}$, starting point ${\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}$. Here we elaborately explain the optimal process for $\lambda_u$: Using the optimal $\boldsymbol {\beta_{u-1}}$ from last iteration as the warm start. within every iteration, find the optimal $\beta$ coordinate-wise.
 For $\beta_j$ in $t_th$ iteration
 
-$$\beta_j^{(t)} = \left\{\begin{array}{lc} \sum_{i=1}^{n} \omega_i(z_i-\sum_{j=1}^{p}{\boldsymbol {X_i}\beta_j}),&j=0\\\frac{s(\beta_j^{(t*)},\lambda_un)}{\sum_{i=1}^{n}\omega_ix_{ij}^2},&j = 1,2,...,p\end{array}\right.$$
+$$\beta_j^{(t)} = \left\{\begin{array}{lc} \frac{\sum_{i=1}^{n} \omega_i(z_i-\sum_{j=1}^{p}{\boldsymbol {X_i}\beta_j})}{\sum_{i}^{n}\omega_i},&j=0\\\frac{s(\beta_j^{(t*)},\lambda_un)}{\sum_{i=1}^{n}\omega_ix_{ij}^2},&j = 1,2,...,p\end{array}\right.$$
 
 $$\beta_j^{(t*)} = \sum_{i=1}^{n}\omega_ix_{ij}z_{ij}^*$$
 $$z_{ij}^* = z_i-\underset {\beta_k\neq0}{\sum_{k = 0}^{j-1}}\beta_k^{(i)}x_{ik}-\underset {\beta_k\neq0}{\sum_{k=j+1}^{p}}\beta_k^{(i-1)}x_{ik}$$
 
 #### Cross Validation
 
-In order to check the model performance, we use 5-fold cross validation. Using training dataset  to choose the best tuning parameter and fit model, and using test dataset to evaluate the final prediction. The statistics we use to compare the validation is MSE and person chi-square statistics, which are defined as:
+In order to check the model performance, we use 5-fold cross validation. Using training dataset  to choose the best tuning parameter and fit model, and using test dataset to evaluate the final prediction. The statistics we use to compare the validation is SSE and person chi-square statistics, which are defined as:
 
-$$MSE = \frac{1}{n}\sum_{i=1}^{n}(y_i-{\widehat \pi_i})$$
+$$SSE = \sum_{i=1}^{n}(y_i-{\widehat \pi_i})^2$$
 $${\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}$$
 $$G = \sum_{i=1}^{n}\frac{y_i-{\widehat \pi_i}}{{\widehat \pi_i}(1-{\widehat \pi_i})}$$
 
@@ -111,6 +111,27 @@ Table 1. Estimated coefficients under Newton-Raphson method
 ### Coordinate-Wise
 
 
+The range of $\lambda$ we tried is (3,0) with length 100. The initial guess of all $\beta$ including the intercept is 0.02. The g.statistics, SSE, AUC are introduced to select best $\lambda$ in Cross Validation. The optimal $\lambda$ would be selected based on the minimum SSE, maxmimum AUC and minimum g-statistics in test data. Below is the results in 5-Fold Cross Validation:
+
+\begin{center}
+\includegraphics{./results/Results from Yuqi.JPG}
+\end{center}
+
+\begin{center}
+Table 2. Cross validatin results
+\end{center}
+
+In all 5 folds, all three critria indicates the same optimal $\lambda$, whcih is 0.In the test data of each fold, the AUC ranges from 0.99 to 0.97, g-statistics ranges from  22.6 to 48.0, while SSE changes from 4.1 to 6.8.
+
+\begin{center}
+\includegraphics{./results/lambda_change.jpeg}
+\end{center}
+
+\begin{center}
+Fig 1. Changes in three criteria vs $\lambda$
+\end{center}
+
+The Figure 1 shows the trend of AUC SSE and g-statistics in train data. With the increse of $\lambda$, both SSE and g-statistics have a dramatic soar. While AUC has a great drop from 1 to 0.5. All of them indicate that the bigger the $\lambda$ is, the worse the model would perform.
 
 ## Discussion
  
