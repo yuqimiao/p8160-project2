@@ -1,0 +1,45 @@
+---
+title: "Results"
+author: "Sibei Liu sl4660"
+date: "2020/3/27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Results
+## Newton-Raphson
+
+After doing the Newton-Raphson modified with step and direction, the estimation of coefficients are:
+
+\begin{center}
+\includegraphics{./results/NR.JPG}
+\end{center}
+
+\begin{center}
+Table 1. Estimated coefficients under Newton-Raphson method
+\end{center}
+
+## Coordinate-Wise
+
+The range of $\lambda$ we tried is (3,0) with length 100. The initial guess of all $\beta$ including the intercept is 0.02. The Pearson-Chi square statistics(g.statistics), MSE, was introduced to compare the models. So in the 5-Fold Cross Validation. In each fold. Below is the results:
+
+\begin{center}
+\includegraphics{./results/Results_from_Yuqi.JPG}
+\end{center}
+
+\begin{center}
+Table 2. Cross validatin results
+\end{center}
+
+In all 5 folds, the optimal $\lambda$ is 0, with similar $\beta_s$ in each fold. 
+
+\begin{center}
+\includegraphics{./results/lambda_vs_criteria.jpeg}
+\end{center}
+
+\begin{center}
+Fig 2. Change with Criteria vs $\lambda$
+\end{center}

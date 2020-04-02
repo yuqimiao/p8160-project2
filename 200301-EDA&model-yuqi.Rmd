@@ -2,7 +2,8 @@
 title: "200301-EDA_and_model-yuqi"
 author: "Yuqi Miao ym2771"
 date: "3/1/2020"
-output: html_document
+output: pdf_document
+geometry: "left=0.5cm,right=0.5cm,top=1cm,bottom=1cm"
 ---
 
 ---
@@ -13,7 +14,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
 
 require(survival)
 require(quantreg)
@@ -27,15 +28,17 @@ set.seed(2019)
 ```{r, include = F}
 library(tidyverse)
 library(caret)
+library(patchwork)
 
 ```
 
 ## data and manipulation
-```{r}
+```{r,,include=FALSE}
 cancer = read_csv("breast-cancer.csv") %>% 
   mutate(diagnosis = as.numeric(factor(diagnosis, levels = c("B","M"), labels = c(0,1)))-1) %>% 
   mutate(radius_mean = scale(radius_mean))
 predictor_scale = as.tibble(scale(cancer[3:12]))
+cancer_package = cancer %>% select(contains("mean"), diagnosis)
 cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
 names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
 
@@ -44,7 +47,7 @@ names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
 
 $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta$$
 
-```{r}
+```{r,include=FALSE}
 hessian_gradient_log = function(data, beta_vec){
   y = as.matrix(data%>% select(last_col()))
   x = as.matrix(data[,1:dim(data)[2]-1])
@@ -63,7 +66,7 @@ a = hessian_gradient_log(cancer_scale, rep(0.02,11))
 
 ```
 
-```{r}
+```{r,include=FALSE}
 NR = function(data, beta_start,tol = 1e-10, max = 200){
   i = 0
   cur = beta_start
@@ -106,7 +109,7 @@ NR_coeff =  NR_result[dim(NR_result)[1], -1:-2]
 ```
 
 # validation using glm
-```{r}
+```{r,,include=FALSE}
 cancer_fit = glm(response~., data = cancer_scale,family = binomial(link = "logit"))
 summary(cancer_fit)
 
@@ -118,10 +121,36 @@ summary(cancer_fit)
 1. normalize or standardize?
 2. how to standardize easily?
 
+```{r,,include=FALSE}
+auc = function(yi,pi_hat){
+  auc = c()
+  for (i in seq(dim(pi_hat)[2])){
+    c = tibble(pi_hat = pi_hat[,i],yi = yi)
+    m = sum(yi==1)
+    n = length(yi)-m
+    c = 
+      c %>% 
+      arrange(pi_hat) %>% 
+      mutate(order = seq_along(pi_hat)) %>% 
+      group_by(pi_hat) %>% 
+      mutate(mean_order = mean(order))
+    pos_order = c %>% filter(yi == 1) %>% pull(mean_order)
+    auc = c(auc,(sum(pos_order)-m*(m+1)/2)/(m*n))
+  }
+  
+  
+  return(auc)
+}
+yi = c(0,1,0,1,0,0,0,1)
+pi = matrix(rep(rep(c(0.2,0.000001,0.3,0.4),2),2),ncol = 2 )
+auc(yi,pi)
+```
+
 ##
-```{r}
-lambda_max = max(abs(NR_coeff)) ## warm start
-tuning_grid = seq(3, 0.1,length = 100) ## tuning seq
+```{r,include=FALSE}
+set.seed(2019)
+#lambda_max = max(abs(NR_coeff)) ## warm start
+tuning_grid = seq(3, 0,length = 100) ## tuning seq
 ## function of lasso coordinate descent algorithm
 # input:
 # data: y -- binary response;
@@ -141,12 +170,12 @@ tuning_grid = seq(3, 0.1,length = 100) ## tuning seq
 #     times: times of iteration in each lambda iteration
 # coeff -- list of final coefficient
 # best_tune -- best tuning parameter lambda
-# MSE_te -- test MSE results among cv
+# SSE_te -- test SSE results among cv
 
 lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200){
   ## create fold
   folds = createFolds(data$response,k = k, returnTrain = T)
-  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, g.stat_tr = Inf, g.stat_te = Inf)
+  cv_result = c(k = 0,best_lambda = 0, beta_vec = beta_vec, g.stat_tr = Inf,auc_te = 0,  g.stat_te = Inf,SSE_test = Inf)
   ## lasso coord des for train data
   for (i in 1:k) {
     tr_rows = folds[[i]]
@@ -162,10 +191,11 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
     for (lambda in sort(tune_grid, decreasing = T)) {
       theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
       pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
-      w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+      w_vec = pi_vec*(1-pi_vec)+rep(1e-10,length(pi_vec)) # dim = (455,1), weight for every obs 
       z_vec = theta_vec + (y_tr - pi_vec)/w_vec # dim = (455,1), working response for every obs 
       w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
-      cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
+      #w_res_vec = w_res_vec[!is.nan(w_res_vec)]
+      cur_target = (1/2*(n_tr))*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
       pre_target = -Inf
       time = 0
       names(beta_vec) = paste("beta_",0:10, sep = "")
@@ -179,14 +209,21 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
            x_tr_s = x_tr[,zero_index]
            beta_pre_s = beta_pre[zero_index] ## sparse updating
            w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr_s%*%beta_pre_s + as.vector(x_tr[,j]*beta_pre[j])))
+           #w_z_vec_j = w_z_vec_j[!is.nan(w_z_vec_j)]
            # dim(455,1),working response with out jth predictor
            w_x_tr_j = as.vector(as.vector(sqrt(w_vec)) * x_tr[,j])
+           #w_x_tr_j = w_x_tr_j[!is.nan(w_x_tr_j)]
            ## dim(455,1), weighted obs on jth row
            tmp = as.numeric(t(w_x_tr_j) %*% w_z_vec_j)
+           lambda_n = lambda*dim(x_tr)[1] 
+           if(j == 1){
+             beta_pre[j] = tmp/sum(w_vec)
+           }
+             
            if (j>=2) {
-             if (abs(tmp)>lambda*dim(x_tr)[1]) {
-              if(tmp > 0) {tmp = tmp - lambda*dim(x_tr)[1]}
-              else {tmp = tmp + lambda*dim(x_tr)[1]}
+             if (abs(tmp)>lambda_n) {
+              if(tmp > 0) {tmp = tmp - lambda_n}
+              else {tmp = tmp + lambda_n}
               }else{
               tmp = 0
               zero_index = zero_index[zero_index!=j]}
@@ -196,11 +233,12 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
         beta_vec = beta_pre
         theta_vec = x_tr%*%beta_vec # dim = (455,1), theta for every obs
         pi_vec = exp(theta_vec)/(1+exp(theta_vec)) # dim = (455,1), pi for every obs
-        w_vec = pi_vec*(1-pi_vec) # dim = (455,1), weight for every obs 
+        w_vec = pi_vec*(1-pi_vec)+rep(1e-10,length(pi_vec)) # dim = (455,1), weight for every obs 
         z_vec = theta_vec + (y_tr - pi_vec)/w_vec 
         # dim = (455,1), working response for every obs 
         w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
-        cur_target = (-1/2*n_tr)*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
+        w_res_vec = w_res_vec[!is.nan(w_res_vec)]
+        cur_target = (1/(2*n_tr))*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
         res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
       }
     }
@@ -208,57 +246,94 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
   res = as.tibble(res)
   beta_lambda = res %>% 
     group_by(lambda) %>% 
-    filter(cur_target == max(cur_target)) %>%  
+    filter(cur_target == min(cur_target)) %>%  
     dplyr::select(contains("beta"))
   beta_lambda_m = as.matrix(beta_lambda[2:dim(beta_lambda)[2]]) # dim = (194, 11)
   ## use train dataset to choose lambda
   pi_hat = exp(x_tr %*% t(beta_lambda_m))/(1+exp(x_tr %*% t(beta_lambda_m)))
-  #residual_lambda = rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat
-  #MSE_train = as.vector(rowSums(t(residual_lambda^2)))
+  residual_lambda = rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat
+  SSE_tr = as.vector(rowSums(t(residual_lambda^2)))
+  ## auc calculation
+  auc_tr = auc(y_tr,pi_hat = pi_hat)
   g.res = (rep(y_tr,dim(beta_lambda_m)[1]) - pi_hat)/sqrt(pi_hat*(1-pi_hat))
   g.stat_tr = as.vector(rowSums(t(g.res^2)))
-  best_result = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr)) %>% 
-    filter(g.stat_tr == min(g.stat_tr)) 
-  
+  result_tr = as.tibble(cbind(beta_lambda,g.stat_tr = g.stat_tr,auc_tr = auc_tr,SSE_tr = SSE_tr))
+  best_result =  result_tr %>% 
+    filter(auc_tr == max(auc_tr)) %>% filter(lambda == min(lambda))  
+  best_result = best_result[1,]
   # use test datasets to evaluate
-  best_result_m = as.matrix(best_result[3:dim(best_result)[2]-1])
+  best_result_m = as.matrix(best_result[2:(dim(best_result)[2]-3)])
   pi_hat_te = exp(x_te %*% t(best_result_m))/(1+exp(x_te %*% t(best_result_m)))
-  #residual_test = y_te - pi_hat_test
-  #MSE_test = as.vector(rowSums(t(residual_test^2)))
+  residual_test = y_te - pi_hat_te
+  SSE_test = as.vector(rowSums(t(residual_test^2)))
+  auc_te = auc(y_te,pi_hat_te)
   g.res_te = (y_te - pi_hat_te)/sqrt(pi_hat_te*(1-pi_hat_te))
   g.stat_te = as.vector(rowSums(t(g.res_te^2)))
   
-  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[3:dim(best_result)[2]-1], g.stat_tr = best_result$g.stat_tr, g.stat_te = g.stat_te))
+  cv_result = rbind(cv_result, c(k = i,best_lambda = best_result$lambda, beta_vec = best_result[2:(dim(best_result)[2]-3)],g.stat_tr = best_result$g.stat_tr, auc_te = auc_te,g.stat_te = g.stat_te,SSE_test = SSE_test))
   #cv_result = as.tibble(cv_result)  
   }
   
-  return(cv_result)
+  return(list(cv_result = unnest(as.tibble(cv_result)),res = res, result_tr= result_tr , best_result = best_result))
 }
 x = lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 5,tune_grid = tuning_grid,max = 200)
 
-knitr::kable(x)
+knitr::kable(x$cv_result,digits = 3)
+
+x
+
+g1 = x$result_tr %>% 
+  ggplot(aes(x = lambda, y = auc_tr))+
+  geom_line()+theme_bw()
+
+g2 = x$result_tr %>% 
+  ggplot(aes(x = lambda, y = SSE_tr))+
+  geom_line()+theme_bw()
+
+g3 = x$result_tr %>% 
+  ggplot(aes(x = lambda, y = g.stat_tr))+
+  geom_line()+theme_bw()
 
 
+g1+g2+g3
 ```
+
+
+```{r}
+# cleaning the above x
+library(sjmisc)
+y=as.data.frame(x$cv_result)
+y_y=rotate_df(y)
+names(y_y)=c("Enter","Fold1","Fold2","Fold3","Fold4","Fold5")
+knitr::kable(y_y)
+```
+
+
 
 ## instead of using MSE, using pearson chi-square 
 
 validation
 
 ```{r}
-x.mat <- model.matrix(response~., data[-1])[,-1]
-y.class <- data$response
+x.mat <- model.matrix(diagnosis~., cancer_package[-1])[,-1]
+y.class <- cancer_package$diagnosis
 
-ctrl1 <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+ctrl1 <- trainControl(method = "cv", number = 5)
 lasso.fit <- train(x.mat, y.class,
-                   method = "glmnet",
-                   tuneGrid = expand.grid(alpha = 1,
-                                          lambda = tuning_grid), 
-                   # preProc = c("center", "scale"),
-                   trControl = ctrl1)
+                  method = "glmnet",
+                  tuneGrid = expand.grid(alpha = 1,
+                                         lambda = seq(3, -1,length = 100)), 
+                  # preProc = c("center", "scale"),
+                  trControl = ctrl1)
 
 lasso.fit$bestTune
-coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
+plot(lasso.fit)
+# min(lasso.fit$results$RMSE)
+# co=coef(lasso.fit$finalModel,lasso.fit$bestTune$lambda)
+# co2=co@x
+# 
+# names(co2)=co@Dimnames[[1]]
+# co2 %>% as.data.frame() %>% knitr::kable()
 ```
 
 
