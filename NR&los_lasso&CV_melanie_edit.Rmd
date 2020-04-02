@@ -1,0 +1,361 @@
+---
+title: "group_project2"
+author: "Sibei Liu sl4660"
+date: "2020/3/1"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(ggrepel)
+require(survival)
+require(quantreg)
+require(glmnet)
+require(MASS)
+require(pROC)
+```
+
+
+Set up data:
+
+```{r data_input}
+#Read in data
+data_cancer=read_csv("breast-cancer.csv") %>% 
+  mutate(
+    diagnosis=as.numeric(factor(diagnosis,level=c("B","M")))-1
+  ) 
+
+#create needed matrices
+n = nrow(data_cancer)
+predictor_scaled = scale(data_cancer[,3:12])
+x_matrix_nointer = as.matrix(predictor_scaled)
+x_matrix = as.matrix(cbind(rep(1, n), predictor_scaled)) # add 1 as to combine with beta_0
+y_matrix = data_cancer$diagnosis
+```
+
+Find likelihood, gradient, and Hessian matrix for logistic model:
+
+```{r likelihood_stuff}
+### create function to obtain loglike, gradient and hess
+
+func_log = function(x_matrix, y_matrix, beta_estimate){
+  theta = x_matrix %*% beta_estimate
+  pi = exp(theta)/(1 + exp(theta))
+  
+  ## loglikelihood
+  loglike = (t(y_matrix) %*% theta) - sum(log(1 + exp(theta)))
+  ## gradient
+  gradient = t(x_matrix) %*% ((y_matrix) - pi)
+  ## hessian 
+  c = pi*(1 - pi)
+  dia_pi_matrix = diag(as.vector(c), nrow = nrow(c))
+  hess = -t(x_matrix) %*% dia_pi_matrix %*% x_matrix
+  return(list(loglike = loglike, gradient = gradient, hess = hess))
+}
+
+d = func_log(x_matrix, y_matrix, rep(0.02,11)) #Example of func_log function
+d
+```
+
+## Develop a Newton-Raphson algorithm 
+
+Include modifications to the direction and step using step halving if necessary:
+
+```{r NR}
+newton_direc = function(x_matrix, y_matrix, func, start, tol = exp(-10), max = 200){
+  i = 0
+  cur = start
+  stuff = func(x_matrix, y_matrix, cur)
+  prevloglike = -Inf
+  res = c(0, stuff$loglike, cur, 1)
+  
+  while((i < max) && (abs(stuff$loglike - prevloglike) > tol)){
+    eigen_value = eigen(stuff$hess)
+    
+    if(max(eigen_value$values) > 0){ ### to check the if hess is negative definite, correct the direction
+      stuff$hess = stuff$hess - max(eigen_value$values)*diag(nrow(stuff$hess))
+    }
+    
+    i = i + 1
+    prevloglike = stuff$loglike
+    pre = cur
+    cur = pre - solve(stuff$hess) %*% stuff$gradient
+    stuff = func(x_matrix, y_matrix, cur)
+    n = 0
+    while((stuff$loglike <= prevloglike) && (n < 10)){    ## step halving loop
+      n = n + 1
+      cur = pre - (1/(2^n))*(solve(stuff$hess))%*% stuff$gradient
+      stuff = func(x_matrix, y_matrix, cur)
+    }
+    res = rbind(res,c(i,stuff$loglike,cur,1/2^n))
+  }
+  return(res)
+}
+
+
+# starting value rep(0.02,11)
+result3 = newton_direc(x_matrix, y_matrix, func_log, rep(0.02, 11))
+result3
+result3[nrow(result3), 3:13] #estimate the model
+```
+
+### Building a logistic-LASSO model 
+
+Includes feature selection, implements a path-wise coordinate-wise optimization algorithm to obtain a path of solutions with a sequence of descending λ’s:
+
+```{r fncts_threshold}
+coef_1 = result3[nrow(result3), 3:13]
+lambda_max = max(abs(result3[nrow(result3), 3:13]))
+lambdas = c(seq(lambda_max, 0, by = -0.05), 0)
+len = length(lambdas)
+
+# S function - one 
+S = function(solution, lambda){
+  if (abs(solution) > lambda){
+    if(solution < 0){
+      return(solution = solution + lambda)
+      }else{return(solution = solution - lambda)}
+    }
+  else{return(0)}
+}
+
+S_S = function(solution, lambda){
+  i = 1
+  for(i in 1:length(solution)){
+    if (abs(solution[i]) > lambda){
+      if(solution[i] < 0){
+        solution[i] = solution[i] + lambda
+      }else{solution[i] = solution[i] - lambda}
+    }else{solution[i] = 0}
+       i = i + 1
+       }
+  return(solution)
+}
+```
+
+Solution of betas at each lambda:
+
+```{r lasso_betas}
+# when lambda = max_lambda
+beta_1 = c(coef_1[1],rep(0,10)) ## lasso dosen't shrink interecpt
+
+# working stuff
+quadratic_appro = function(beta_vec, x_matrix, y_matrix, lambda){
+  x = x_matrix
+  y = y_matrix
+  pi = exp(x %*% (beta_vec))/(1 + exp(x %*% beta_vec)) #prob at current parameters
+  wi = pi*(1 - pi) #working weights
+  zi = x %*% beta_vec + (y - pi)/wi #working response
+  
+  y_star1 = zi - x[,-1] %*% beta_vec[-1]
+  beta = rep(0, length(beta_vec)) # to store
+  beta[1] = mean(y_star1)
+  beta_update = c(beta[1], beta_vec[2:length(beta_vec)])
+  i = 2
+  for(i in 2:length(beta_vec)){
+    y_star2 = zi - x[,-i] %*% beta_update[-i]
+    beta[i] = sum(wi*x[,i]*y_star2)
+    beta[i] = S(beta[i],lambda)/sum(wi*(x[,i]^2))
+    beta_pre = beta_update
+    if(i != length(beta_vec)){beta_update = 
+      c(beta_pre[1:i-1], beta[i], beta_pre[(i+1):length(beta_vec)])}else
+        {beta_update = c(beta_pre[1:i-1],beta[i])}
+    i = i + 1
+  }
+ return(beta_update)
+}
+
+beta_2 = rep(0.02,11)
+quadratic_appro(beta_2, x_matrix, y_matrix, lambdas[1])
+```
+
+Beta coefficients with different lambda values:
+
+```{r example}
+# use all x and y to try the  quadratic_appro and get the series of betas
+# below code is useless in cv, just simply try
+
+lab = c("lambda", str_c("beta", 1:11))
+result4 = rbind(lab, c("initial",beta_2))## first guess beta=rep(0.02,11)
+i = 1
+beta_vec=beta_2
+for(i in 1:len){
+  beta_new = quadratic_appro(beta_vec, x_matrix,y_matrix, lambdas[i])
+  result4 = rbind(result4, c(lambdas[i], beta_new))
+  beta_vec = beta_new
+  i = i + 1
+}
+result4 %>% as_tibble()
+```
+
+### Cross-validation
+
+Create datasets to perform cross validation on:
+
+```{r}
+data_use = data_cancer 
+
+set.seed(2020)
+library(caret)
+library(ModelMetrics)
+#Split data to 5 fold
+fold_number = 5
+cvSplit = createFolds(data_use$diagnosis,
+                             k = fold_number,
+                             returnTrain = TRUE)
+str(cvSplit)
+```
+
+Perform lasso on CV data:
+
+```{r cv_logistic}
+beta_total = rep(0, 11)
+
+#performs logistic regression on each fold
+for(k in 1:fold_number){
+  trRows = cvSplit[[k]]
+  train_fold = data_use[trRows,] #training set per fold
+  vali_fold = data_use[-trRows,] #testing set per fold
+  
+  x_train = as.matrix(cbind(rep(1,nrow(train_fold)), scale(train_fold[,3:12])))
+  y_train = train_fold$diagnosis
+
+  x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)), scale(vali_fold[,3:12]))) 
+  y_vali = vali_fold$diagnosis
+  linear = glm(y_train ~ x_train[,-1],family = binomial(link='logit'))
+  beta_new = coef(linear) %>% as.vector()
+  beta_total = cbind(beta_total, beta_new)
+  k = k + 1
+}
+
+max(abs(beta_total))
+```
+
+Find MSE for each model found in cross-validation:
+
+```{r tune_grid}
+lambdas2 = c(seq(3, -1, by = -0.01), 0) #finer tuning grid for lambda
+len2 = length(lambdas2)
+
+#create empty mse_folder to hold the mse for each lambda in each fold
+mse_folds = matrix(rep(NA, fold_number*len2), nrow = fold_number, ncol = len2) 
+
+#find corresponding AUC
+guess = rep(0.02,11)
+for(k in 1:fold_number){
+  trRows = cvSplit[[k]]
+  train_fold = data_use[trRows,]
+  vali_fold = data_use[-trRows,]
+  
+  x_train = as.matrix(cbind(rep(1, nrow(train_fold)), scale(train_fold[,3:12])))
+  y_train = train_fold$diagnosis
+
+  x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)), scale(vali_fold[,3:12]))) 
+  y_vali = vali_fold$diagnosis
+  
+  beta_vec = guess
+  lab = c("lambda", str_c("beta", 1:length(guess)))
+  result5 = rbind(lab, c("initial", beta_vec))
+
+  for(i in 1:len2){
+    beta_new = quadratic_appro(beta_vec, x_train, y_train, lambdas2[i])
+    result5 = rbind(result5, c(lambdas2[i], beta_new))
+    beta_vec = beta_new
+    
+    theta = x_vali %*% beta_vec
+    y_fit = exp(theta)/(1 + exp(theta))
+    mse_folds[k, i] = mse(y_vali, y_fit)
+    
+    i = i + 1
+  }
+  
+#  for(d in 2:(len2 + 1)){
+#    beta_cor = as.numeric(result5[d, 2:12])
+#    theta = x_vali %*% beta_cor
+#    y_fit = exp(theta)/(1 + exp(theta))
+#    mse_folds[k, d - 1] = mse(y_vali, y_fit)
+#    d = d + 1
+#    }
+  k = k + 1
+}
+
+mse_folds
+
+
+```
+
+
+```{r, eval = F}
+mse_final = c(rep(NA, len2))
+for(i in 1:len2){mse_final[i] = mean(mse_folds[,i])}
+
+mse_final
+
+
+mins = min(mse_final)
+mins
+order = which(mse_final==mins)
+lambdas2[order]## is the lambda which produces the smallest mse
+
+dataframe = tibble(mse = mse_final, lambdas = lambdas2)
+ggplot(dataframe, aes(x = lambdas, y = mse)) + geom_line()
+
+dataframe1 = tibble(mse = mse_final,
+                    lambdas = lambdas2) %>% 
+  filter(lambdas2 <= 3)
+
+
+ggplot(dataframe1, 
+       aes(x = lambdas, y = mse,label = mse)) + 
+  geom_point(color = ifelse(dataframe1$lambdas == lambdas2[order], "red", "grey" ))
+  
+```
+
+
+```{r, eval = F}
+lab=c("lambda",str_c("beta",1:11))
+beta_vec2=S_S(coef_1[2:11],lambdas2[1])
+result7=rbind(lab,c(lambdas2[1],coef_1[1],beta_vec2))
+i=2
+beta_vec2=c(coef_1[1],beta_vec2)
+for(i in 2:len2){
+  beta_new=quadratic_appro(beta_vec2,x_matrix,y_matrix,lambdas2[i])
+  result7=rbind(result7,c(lambdas2[i],beta_new))
+  beta_vec2=beta_new
+  i=i+1
+}
+result7 %>% as.tibble() %>% filter(V1==lambdas2[order])
+```
+
+
+```{r caret}
+library(caret)
+
+y_matrix_caret <- as.factor(ifelse(y_matrix == 0, "B", "M"))
+
+myControl <- trainControl(
+  method = "cv",
+  number = 5,
+  summaryFunction = twoClassSummary,
+  classProbs = TRUE, # IMPORTANT!
+  verboseIter = TRUE
+)
+
+set.seed(2020)
+lasso_caret <- train(x_matrix[, -1],
+                     y_matrix_caret, 
+                     method = "glmnet",
+                     trControl= myControl,
+                     tuneGrid =expand.grid(alpha = 1, lambda = seq(0, 0.5, length=150))
+                     )
+
+lasso_caret
+
+plot(lasso_caret, xTrans =function(x)log(x))
+
+```
+

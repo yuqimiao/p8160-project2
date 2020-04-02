@@ -3,6 +3,8 @@ title: "group_project2"
 author: "Sibei Liu sl4660"
 date: "2020/3/1"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -15,52 +17,59 @@ require(quantreg)
 require(glmnet)
 require(MASS)
 require(pROC)
+```
 
-set.seed(2019)
+
+Set up data:
+
+```{r setup}
+#Read in data
 data_cancer=read_csv("breast-cancer.csv") %>% 
   mutate(
     diagnosis=as.numeric(factor(diagnosis,level=c("B","M")))-1
   ) 
 
-n=nrow(data_cancer)
-predictor_scaled=scale(data_cancer[,3:12])
-x_matrix_nointer=as.matrix(predictor_scaled)
-x_matrix=as.matrix(cbind(rep(1,n),predictor_scaled))# add 1 as to combine with beta_0
-y_matrix=data_cancer$diagnosis
-
+#create needed matrices
+n = nrow(data_cancer)
+predictor_scaled = scale(data_cancer[,3:12])
+x_matrix_nointer = as.matrix(predictor_scaled)
+x_matrix = as.matrix(cbind(rep(1, n), predictor_scaled)) # add 1 as to combine with beta_0
+y_matrix = data_cancer$diagnosis
 ```
 
+Find likelihood, gradient, and Hessian matrix for logistic model:
 
 ```{r}
 ### create function to obtain loglike, gradient and hess
 
-func_log= function(x_matrix,beta_estimate){
-theta=x_matrix%*%t(t(beta_estimate))
-pi=exp(theta)/(1+exp(theta))
-## below loglike
-loglike=t(y_matrix)%*%theta-sum(log(1+exp(theta)))
-## below gradient
-gradient=t(x_matrix)%*%(t(t(y_matrix))-pi)
-
-## below hess
-c=pi*(1-pi)
-dia_pi_matrix=matrix(rep(0,n*n),n,n)
-  i=1
-  for(i in 1:n){
-    dia_pi_matrix[i,i]=c[i]
-    i=i+1}
+func_log = function(x_matrix, y_matrix, beta_estimate){
+  theta = x_matrix %*% beta_estimate
+  pi = exp(theta)/(1 + exp(theta))
   
- hess=-t(x_matrix)%*%dia_pi_matrix%*%x_matrix
-return(list(loglike=loglike,gradient=gradient,hess=hess))
-}
+  ## loglikelihood
+  loglike = (t(y_matrix) %*% theta) - sum(log(1 + exp(theta)))
+  ## gradient
+  gradient = t(x_matrix) %*% ((y_matrix) - pi)
+  ## hessian 
+  c = pi*(1 - pi)
+  dia_pi_matrix = matrix(rep(0, n*n), n, n)
+  i = 1
+  for(i in 1:n){
+    dia_pi_matrix[i,i] = c[i]
+    i = i + 1}
+  
+  hess = -t(x_matrix) %*% dia_pi_matrix %*% x_matrix
+  return(list(loglike = loglike, gradient = gradient, hess = hess))
+  }
 
 
-d=func_log(x_matrix,rep(0.02,11))
+d = func_log(x_matrix, rep(0.02,11))
 d
 ```
 
 
 modify the direction and step using step halving if necessary
+
 ```{r}
 
 newton_direc =function(data,func,start,tol=exp(-10),max=200){
