@@ -22,12 +22,14 @@ data_cancer=read_csv("breast-cancer.csv") %>%
     diagnosis=as.numeric(factor(diagnosis,level=c("B","M")))-1
   ) 
 
-n=nrow(data_cancer)
-predictor_scaled=scale(data_cancer[,3:12])
+n_row=nrow(data_cancer)
+
+predictor_scaled=scale(data_cancer[,3:32])
 x_matrix_nointer=as.matrix(predictor_scaled)
-x_matrix=as.matrix(cbind(rep(1,n),predictor_scaled))# add 1 as to combine with beta_0
+x_matrix=as.matrix(cbind(rep(1,n_row),predictor_scaled))# add 1 as to combine with beta_0
 y_matrix=data_cancer$diagnosis
 
+n_beta=31
 ```
 
 
@@ -35,28 +37,27 @@ y_matrix=data_cancer$diagnosis
 ### create function to obtain loglike, gradient and hess
 
 func_log= function(x_matrix,beta_estimate){
+  #beta_estimate=cur
 theta=x_matrix%*%t(t(beta_estimate))
 pi=exp(theta)/(1+exp(theta))
 ## below loglike
 loglike=t(y_matrix)%*%theta-sum(log(1+exp(theta)))
+loglike=loglike%>% as.vector()
 ## below gradient
 gradient=t(x_matrix)%*%(t(t(y_matrix))-pi)
 
 ## below hess
-c=pi*(1-pi)
-dia_pi_matrix=matrix(rep(0,n*n),n,n)
-  i=1
-  for(i in 1:n){
-    dia_pi_matrix[i,i]=c[i]
-    i=i+1}
+dia_pi_matrix=matrix(rep(0,n_row*n_row),n_row,n_row)
+ diag(dia_pi_matrix) = pi*(1-pi)
   
  hess=-t(x_matrix)%*%dia_pi_matrix%*%x_matrix
 return(list(loglike=loglike,gradient=gradient,hess=hess))
 }
 
 
-d=func_log(x_matrix,rep(0.02,11))
-d
+d=func_log(x_matrix,rep(1,31))
+d$loglike
+
 ```
 
 
@@ -64,6 +65,9 @@ modify the direction and step using step halving if necessary
 ```{r}
 
 newton_direc =function(data,func,start,tol=exp(-10),max=200){
+  func=func_log
+  data=x_matrix
+  start=rep(1,31)
   i=0
   cur=start
   stuff=func(data,cur)
@@ -72,13 +76,16 @@ newton_direc =function(data,func,start,tol=exp(-10),max=200){
   
   while((i<max) && (abs(stuff$loglike-prevloglike)>tol) ){
     eigen_value=eigen(stuff$hess)
+    w=0
+    c=1
     
-    if(eigen_value$values[1]>0 |eigen_value$values[2]>0|eigen_value$values[3]>0|eigen_value$values[4]>0
-       |eigen_value$values[5]>0|eigen_value$values[6]>0|eigen_value$values[7]>0|eigen_value$values[8]>0|eigen_value$values[9]>0|eigen_value$values[10]>0|eigen_value$values[11]>0)
-      {
-      stuff$hess=stuff$hess-max(eigen_value$values)*matrix(rep(1,11*11),11,11)
-    }### to check the if hess is negative definite, correct the direction
+    for(c in 1:31){
+    if(eigen_value$values[c]>0) 
+    {w=w+1}
+      c=c+1}
     
+    if(w>0)
+    {stuff$hess=stuff$hess-max(eigen_value$values)}### to check the if hess is negative definite, correct the direction
     
     i=i+1
     prevloglike=stuff$loglike
@@ -86,8 +93,8 @@ newton_direc =function(data,func,start,tol=exp(-10),max=200){
     cur=pre-solve(stuff$hess) %*% stuff$gradient
     stuff=func(data,cur)
     n=0
-    #while((stuff$loglike <= prevloglike)){
-    while((stuff$loglike <= prevloglike) && (n<10)){
+    #while((stuff$loglike < prevloglike)){
+    while((stuff$loglike < prevloglike) && (n<10)){
       n=n+1
       cur=pre-(1/(2^n))*(solve(stuff$hess))%*% stuff$gradient
       stuff=func(data,cur)
@@ -95,11 +102,12 @@ newton_direc =function(data,func,start,tol=exp(-10),max=200){
     res=rbind(res,c(i,stuff$loglike,cur,1/2^n))
   }
   return(res)
-}
+  }
 
 
-# starting value rep(0.02,11)
-result3=newton_direc(x_matrix,func_log,rep(0.02,11))
+
+# starting value rep(5,31)
+result3=newton_direc(x_matrix,func_log,rep(1,n_beta))
 result3
 result3[nrow(result3),]
 ```
@@ -110,7 +118,7 @@ result3[nrow(result3),]
 # Logistic Lasso
 ```{r}
 
-lambdas=seq(14, 0.01,length = 100)
+lambdas=seq(3, 0,length = 100)
 len=length(lambdas)
 
 # s function
@@ -138,16 +146,16 @@ len=length(lambdas)
   
   
   y_star1=zi-x[,-1]%*%beta_vec[-1]
-  beta=rep(0,11)# to store
+  beta=rep(0,n_beta)# to store
   beta[1]=sum(wi*y_star1)/sum(wi)
-  beta_update=c(beta[1],beta_vec[2:11])
+  beta_update=c(beta[1],beta_vec[2:n_beta])
   i=2
-  for(i in 2:11){
+  for(i in 2:n_beta){
     y_star2=zi-x[,-i]%*% beta_update[-i]
     beta[i]=sum(wi*x[,i]*y_star2)
     beta[i]=S(beta[i],(lambda*length(y)))/sum(wi*(x[,i]^2))
     beta_pre=beta_update
-    if(i!=11){beta_update=c(beta_pre[1:i-1],beta[i],beta_pre[(i+1):11])}else
+    if(i!=n_beta){beta_update=c(beta_pre[1:i-1],beta[i],beta_pre[(i+1):n_beta])}else
     {beta_update = c(beta_pre[1:i-1],beta[i])}
     i=i+1
   }
@@ -161,7 +169,7 @@ len=length(lambdas)
  return(c(beta_update,cur_tar))
 }
 
- beta_2=rep(0.02,11)
+ beta_2=rep(0.02,n_beta)
  quadratic_coor_wise_once(beta_2,x_matrix,y_matrix,0)
 ```
 
@@ -180,22 +188,22 @@ len=length(lambdas)
   beta_3=beta_enter
   iteration=0
   result4=c(beta_enter,cur,iteration)
-  names(result4)=c(str_c("beta",0:10),"cur_tar","inter")
+  names(result4)=c(str_c("beta",0:30),"cur_tar","inter")
  while((abs(cur-pre)>tol) & (iteration < max)){
    pre=cur
   iteration=iteration+1
    result_new=quadratic_coor_wise_once(beta_3,x,y,lambda)
-   beta_new=result_new[1:11]
-   cur=result_new[12]
+   beta_new=result_new[1:n_beta]
+   cur=result_new[32]
    result_new2=c(result_new,iteration)
   result4=rbind(result4,result_new2)
   beta_3=beta_new
  }
   min_tar=min(result4[,"cur_tar"])
 order2=which(result4[,"cur_tar"]==min_tar)
-  return(result4[order2,1:11]) }
+  return(result4[order2,1:n_beta]) }
 
-beta_enter=rep(0.02,11)
+beta_enter=rep(0.02,n_beta)
 quadratic_coor_wise_all(beta_enter,x_matrix,y_matrix,0)
 
 ```
@@ -256,21 +264,21 @@ auc = function(yi,pi_hat){
 ```{r}
 k=1
 library(pROC)
-beta_enter=rep(0.02,11)
-## initial guess = beta_2=rep(0.02,11)
+beta_enter=rep(0.02,n_beta)
+## initial guess = beta_2=rep(0.02,31)
 for(k in 1:fold_number){
   
   trRows=cvSplit[[k]]
   train_fold=data_use[trRows,]
   vali_fold= data_use[-trRows,]
   
-  x_train = as.matrix(cbind(rep(1,nrow(train_fold)),scale(train_fold[,3:12])))
+  x_train = as.matrix(cbind(rep(1,nrow(train_fold)),scale(train_fold[,3:32])))
   y_train = train_fold$diagnosis
 
-  x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:12]))) 
+  x_vali = as.matrix(cbind(rep(1,nrow(vali_fold)),scale(vali_fold[,3:32]))) 
   y_vali = vali_fold$diagnosis
   if(k==1){output=c(0,beta_enter,Inf,Inf,Inf)
- names(output)=c("fold",str_c("beta",0:10),"lambda","mse","auc")}
+ names(output)=c("fold",str_c("beta",0:30),"lambda","mse","auc")}
   d=1
   for(d in 1:(len2)){
   result=quadratic_coor_wise_all(beta_enter,x_train,y_train,lambdas2[d])
@@ -327,7 +335,7 @@ dataframe1=tibble(mse=mse_final,
 
 ```{r}
 set.seed(2019)
-cancer_package=data_cancer[,2:12]
+cancer_package=data_cancer[,2:32]
 x.mat <- model.matrix(diagnosis~., cancer_package)[,-1]
 y.class <- cancer_package$diagnosis
 
