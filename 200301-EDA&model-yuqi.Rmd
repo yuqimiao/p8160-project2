@@ -41,7 +41,8 @@ predictor_scale = as.tibble(scale(cancer[3:12]))
 cancer_package = cancer %>% select(contains("mean"), diagnosis)
 cancer_scale = cbind(rep(1,569),predictor_scale, cancer$diagnosis)
 names(cancer_scale) = c("ones", names(cancer)[3:12], "response")
-
+cancer_scale2 = cbind(rep(1,569),as.tibble(scale(cancer[3:(dim(cancer)[2]-1)])), cancer$diagnosis)
+names(cancer_scale2) = c("ones", names(cancer)[3:(dim(cancer)[2]-1)], "response")
 ## standardize data!!
 ```
 
@@ -90,6 +91,7 @@ NR = function(data, beta_start,tol = 1e-10, max = 200){
     stuff = hessian_gradient_log(data,cur)
     curlog = stuff$loglikelihood
     while(curlog<prevlog){
+      stuff = hessian_gradient_log(data,prev)
       step = step/2
       cur = prev - rep(step,length(prev))*(solve(hessian)%*%stuff$gradient)
       stuff = hessian_gradient_log(data,cur)
@@ -103,7 +105,10 @@ NR = function(data, beta_start,tol = 1e-10, max = 200){
 beta_start = rep(0.02,11)
 names(beta_start) = names(cancer_scale)[-12]
 
-NR_result = NR(cancer_scale, beta_start)
+beta_start2 = rep(0.02,31)
+names(beta_start2) = names(cancer_scale2)[-32]
+
+NR_result = NR(cancer_scale2, beta_start2)
 
 NR_coeff =  NR_result[dim(NR_result)[1], -1:-2]
 ```
@@ -194,19 +199,20 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
       w_vec = pi_vec*(1-pi_vec)+rep(1e-10,length(pi_vec)) # dim = (455,1), weight for every obs 
       z_vec = theta_vec + (y_tr - pi_vec)/w_vec # dim = (455,1), working response for every obs 
       w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
-      #w_res_vec = w_res_vec[!is.nan(w_res_vec)]
+      # w_res_vec = w_res_vec[!is.nan(w_res_vec)]
       cur_target = (1/2*(n_tr))*t((w_res_vec))%*%(w_res_vec) + lambda*sum(abs(beta_vec[-1]))
       pre_target = -Inf
       time = 0
-      names(beta_vec) = paste("beta_",0:10, sep = "")
+      names(beta_vec) = paste("beta_",0:(dim(data)[2]-2), sep = "")
       res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
-      while((abs(pre_target-cur_target)>tol) & time < max){
+      while((abs(pre_target-cur_target)>tol) & time < max & cur_target>pre_target ){
         time = time+1
         zero_index = seq(1,length(beta_start))
         pre_target = cur_target
         beta_pre = beta_vec
          for (j in 1:dim(train)[2]-1) {
-           x_tr_s = x_tr[,zero_index]
+           x_tr_s = x_tr[1:dim(x_tr)[1],zero_index]
+           dim(x_tr_s) = c(dim(x_tr)[1],length(zero_index))
            beta_pre_s = beta_pre[zero_index] ## sparse updating
            w_z_vec_j = as.vector(sqrt(w_vec)*(z_vec - x_tr_s%*%beta_pre_s + as.vector(x_tr[,j]*beta_pre[j])))
            #w_z_vec_j = w_z_vec_j[!is.nan(w_z_vec_j)]
@@ -237,7 +243,7 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
         z_vec = theta_vec + (y_tr - pi_vec)/w_vec 
         # dim = (455,1), working response for every obs 
         w_res_vec = sqrt(w_vec)*(z_vec - theta_vec)
-        w_res_vec = w_res_vec[!is.nan(w_res_vec)]
+        #w_res_vec = w_res_vec[!is.nan(w_res_vec)]
         cur_target = (1/(2*n_tr))*t((w_res_vec))%*%(w_res_vec) +lambda*sum(abs(beta_vec[-1]))
         res = rbind(res,c(k = k,lambda = lambda,time = time, cur_target = cur_target, beta_vec))
       }
@@ -278,6 +284,11 @@ lasso_co_des = function(data, beta_vec,  k = 5, tune_grid,tol = 1e-10, max = 200
 }
 x = lasso_co_des(data = cancer_scale, beta_vec = rep(0.02,11), k = 5,tune_grid = tuning_grid,max = 200)
 
+beta_start2 = rep(1,31)
+
+beta_vec2 = beta_start2
+x = lasso_co_des(data = cancer_scale2, beta_vec = beta_start2, k = 5,tune_grid = tuning_grid,max = 200)
+
 knitr::kable(x$cv_result,digits = 3)
 
 x
@@ -296,6 +307,9 @@ g3 = x$result_tr %>%
 
 
 g1+g2+g3
+
+x$res
+
 ```
 
 
