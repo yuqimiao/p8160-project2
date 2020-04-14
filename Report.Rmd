@@ -72,17 +72,18 @@ In the case of large dimensionality of predictors or multicollinearity it can be
 In LASSO we add an L1 penalization term to the squared loss function, such that we try to find the coefficients to minimize:
 
 $$min _{(\boldsymbol \beta)}\{-l({\boldsymbol \beta})+\lambda\sum_{j=0}^{p}|\beta_j| \}$$
-Where we find the likelihood to be: 
+With the pathwise coordinate-wise update algorithm, we find the likelihood to be: 
 $$l({\boldsymbol \beta}) = -\frac{1}{2n}\sum_{i=1}^{n}\omega_i(z_i-{\boldsymbol {X_i\beta}})^2$$
-
+where,
 $$\pi_i = \frac{exp({\boldsymbol {X_i\beta}})}{1+exp({\boldsymbol {X_i\beta}})}$$
 
 $$\omega_i = \pi_i(1-\pi_i)$$
 
 $$z_i = {\boldsymbol {X_i\beta}}+\frac{y_i-\pi_i}{\pi_i(1-\pi_i)}$$
 
-Pre-define the tuning parameter sequence $\{\lambda_1,...,\lambda_s\}$, starting point ${\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}$. Here we elaborately explain the optimal process for $\lambda_u$: Using the optimal $\boldsymbol {\beta_{u-1}}$ from last iteration as the warm start. within every iteration, find the optimal $\beta$ coordinate-wise.
-For $\beta_j$ in $t_th$ iteration
+One must pre-define the tuning parameter sequence $\{\lambda_1,...,\lambda_s\}$ and a starting vector ${\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}$. To imptove efficienct, it is best to define $max{(\boldsymbol \lambda)} = max(\boldsymbol\beta)$ where $\boldsymbol\beta$ refers to the estimated coefficients from the previous iteration. The  optimal process for each $\lambda_u$ is then found by using the optimal $\boldsymbol {\beta_{u-1}}$ from the previous iteration as a warm start. Within every iteration find the optimal $\beta$ coordinate-wise, that is minimize over one parameter at a time while keeping all others fixed.
+
+For $\beta_j$ in $t_{th}$ iteration
 
 $$\beta_j^{(t)} = \left\{\begin{array}{lc} \frac{\sum_{i=1}^{n} \omega_i(z_i-\sum_{j=1}^{p}{\boldsymbol {X_i}\beta_j})}{\sum_{i}^{n}\omega_i},&j=0\\\frac{s(\beta_j^{(t*)},\lambda_un)}{\sum_{i=1}^{n}\omega_ix_{ij}^2},&j = 1,2,...,p\end{array}\right.$$
 
