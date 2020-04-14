@@ -1,11 +1,11 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2020.4.10)  10 APR 2020 18:16
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2020.4.14)  14 APR 2020 15:20
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
 **Report.tex
 (./Report.tex
 LaTeX2e <2020-02-02> patch level 5
-L3 programming layer <2020-03-06> (/Users/mm4963/Library/TinyTeX/texmf-dist/tex
+L3 programming layer <2020-04-06> (/Users/mm4963/Library/TinyTeX/texmf-dist/tex
 /latex/base/article.cls
 Document Class: article 2019/12/20 v1.4l Standard LaTeX document class
 (/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/base/size10.clo
@@ -314,149 +314,23 @@ Package: titling 2009/09/04 v2.1d maketitle typesetting
 File: l3backend-pdfmode.def 2020-03-12 L3 backend support: PDF mode
 \l__kernel_color_stack_int=\count266
 \l__pdf_internal_box=\box47
-) (./Report.aux)
-\openout1 = `Report.aux'.
+) (./Report.aux
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 88.
-LaTeX Font Info:    ... okay on input line 88.
-*geometry* driver: auto-detecting
-*geometry* detected driver: pdftex
-*geometry* verbose mode - [ preamble ] result:
-* driver: pdftex
-* paper: <default>
-* layout: <same size as paper>
-* layoutoffset:(h,v)=(0.0pt,0.0pt)
-* modes: 
-* h-part:(L,W,R)=(72.26999pt, 469.75502pt, 72.26999pt)
-* v-part:(T,H,B)=(72.26999pt, 650.43001pt, 72.26999pt)
-* \paperwidth=614.295pt
-* \paperheight=794.96999pt
-* \textwidth=469.75502pt
-* \textheight=650.43001pt
-* \oddsidemargin=0.0pt
-* \evensidemargin=0.0pt
-* \topmargin=-37.0pt
-* \headheight=12.0pt
-* \headsep=25.0pt
-* \topskip=10.0pt
-* \footskip=30.0pt
-* \marginparwidth=65.0pt
-* \marginparsep=11.0pt
-* \columnsep=10.0pt
-* \skip\footins=9.0pt plus 4.0pt minus 2.0pt
-* \hoffset=0.0pt
-* \voffset=0.0pt
-* \mag=1000
-* \@twocolumnfalse
-* \@twosidefalse
-* \@mparswitchfalse
-* \@reversemarginfalse
-* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+! LaTeX Error: Missing \begin{document}.
 
-\AtBeginShipoutBox=\box48
-Package hyperref Info: Link coloring OFF on input line 88.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/hyperref/nameref.sty
-Package: nameref 2019/09/16 v2.46 Cross-referencing by name of section
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/refcount/refcount.sty
-Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
-)
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/generic/gettitlestring/gettitlest
-ring.sty
-Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
-)
-\c@section@level=\count267
-)
-LaTeX Info: Redefining \ref on input line 88.
-LaTeX Info: Redefining \pageref on input line 88.
-LaTeX Info: Redefining \nameref on input line 88.
-(./Report.out) (./Report.out)
-\@outlinefile=\write3
-\openout3 = `Report.out'.
-
-
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.
-sty
-Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
-Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
-85.
-
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cf
-g
-File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
-e
-))
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 1
-28.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
-File: ts1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 1
-60.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/lm/ot1lmr.fd
-File: ot1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 1
-60.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/lm/omllmm.fd
-File: omllmm.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-160.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/lm/omslmsy.fd
-File: omslmsy.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-160.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/lm/omxlmex.fd
-File: omxlmex.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 160.
-LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 160.
-LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 160.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 160
-.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
-File: umsa.fd 2013/01/14 v3.01 AMS symbols A
-)
-LaTeX Font Info:    Trying to load font information for U+msb on input line 160
-.
-(/Users/mm4963/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
-File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-) [1
-
-{/Users/mm4963/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [
-2]
-! Extra }, or forgotten $.
-<recently read> }
-                 
-l.242 ...oldsymbol \lambda)} = max(\boldsymbol\hat
-                                                  {\beta})\) The optimal 
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.31 <
+      <<<<<< HEAD 
 Here is how much of TeX's memory you used:
- 10075 strings out of 482531
- 145140 string characters out of 5950190
- 387154 words of memory out of 5000000
- 25534 multiletter control sequences out of 15000+600000
- 575006 words of font info for 56 fonts, out of 8000000 for 9000
+ 9600 strings out of 482530
+ 136512 string characters out of 5950156
+ 376507 words of memory out of 5000000
+ 25159 multiletter control sequences out of 15000+600000
+ 535328 words of font info for 25 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 34i,8n,34p,373b,325s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 34i,0n,34p,240b,270s stack positions out of 5000i,500n,10000p,200000b,80000s
 
 !  ==> Fatal error occurred, no output PDF file produced!

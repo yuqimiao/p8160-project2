@@ -109,9 +109,8 @@ benign images of breast tissue. Using the Breast Cancer Diagnosis
 dataset, logistics model and logistic-LASSO model will be implemented to
 predict the diagnosis. A Newton-Raphson algorithm and Pathwise
 Coordinate optimization will be developed to estimate the logistic model
-and the lasso-logistic model respectively. We aim to find the model with
-the best performance in terms of predicting when breast tissue is
-malignant.
+and the lasso model respectively. We aim to find the model with the best
+performance in terms of predicting when breast tissue is malignant.
 
 \hypertarget{breast-cancer-diagnosis-dataset}{%
 \subsection{Breast Cancer Diagnosis
@@ -149,7 +148,10 @@ cell nucleus are:
 The mean, standard deviation (SD) and largest values of these features
 are computed for each image, resulting in 30 possible predictive
 variables. We will analyze the predictive ability for diagnosis of
-malignant or benign cases of these covariates.
+malignant or benign cases of these covariates. The mean of each feature
+will be included in our models and presented in the result section. We
+will also create models with all 30 predictors however, these results
+will be reported in the supplement section.
 
 \hypertarget{methods}{%
 \subsection{Methods}\label{methods}}
@@ -202,9 +204,10 @@ of \(\boldsymbol \beta\), an iterative process is set as follows:
 This is the Newton-Raphson method with two modifications. \(\delta\) is
 included in the process to accomplish the step-halving modification, the
 step coefficient ensures the likelihood is always increasing in order to
-achieve quicker convergence. \(\gamma\) is the modification coefficient
-to ensure the aescent direction of the iteration vector at
-\(\theta_{i}\).
+achieve quicker convergence. Once the likelihood approaches convergence
+the steps become smaller until convergence is reached. \(\gamma\) is the
+modification coefficient to ensure the aescent direction of the
+iteration vector at \(\theta_{i}\).
 
 \hypertarget{logit-lasso-pathwise-coordinate-wise-update-algorithm}{%
 \subsubsection{Logit-lasso pathwise coordinate-wise update
@@ -212,14 +215,14 @@ algorithm}\label{logit-lasso-pathwise-coordinate-wise-update-algorithm}}
 
 In the case of large dimensionality of predictors or multicollinearity
 it can be beneficial to perform a regularization method which shrinks
-coefficients and performs variable selection. Here we implement the
+coefficients and can perform variable selection. Here we implement the
 Least Absolute Shrinkage and Selection Operator (LASSO) method for
 logistic regression with a path-wise coordinate-wise optimization
-algorithm to select variables from the full model and increase the
-prediction efficiency and avoid overfitting. Seeing how we have 30
-predictors describing 10 features, we are likely to experience
-multicollinearity and expect LASSO to outperform the classical logistic
-regression.
+algorithm to select variables from the full model, increase the
+prediction efficiency and avoid overfitting. With the large model, we
+have 30 predictors describing 10 features, hence we are likely to
+experience multicollinearity and expect LASSO to outperform the
+classical logistic regression.
 
 In LASSO we add an L1 penalization term to the squared loss function,
 such that we try to find the coefficients to minimize:
@@ -237,14 +240,15 @@ where,
 
 One must pre-define the tuning parameter sequence
 \(\{\lambda_1,...,\lambda_s\}\) and a starting vector
-\({\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}\). It
-is best to define
-\(max{(\boldsymbol \lambda)} = max(\boldsymbol\hat{\beta})\) The optimal
-process for each \(\lambda_u\) is then found by using the optimal
-\(\boldsymbol {\beta_{u-1}}\) from the previous iteration as a warm
-start. Within every iteration find the optimal \(\beta\)
-coordinate-wise, that is minimize over one parameter at a time while
-keeping all others fixed.
+\({\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}\). To
+imptove efficienct, it is best to define
+\(max{(\boldsymbol \lambda)} = max(\boldsymbol\beta)\) where
+\(\boldsymbol\beta\) refers to the estimated coefficients from the
+previous iteration. The optimal process for each \(\lambda_u\) is then
+found by using the optimal \(\boldsymbol {\beta_{u-1}}\) from the
+previous iteration as a warm start. Within every iteration find the
+optimal \(\beta\) coordinate-wise, that is minimize over one parameter
+at a time while keeping all others fixed.
 
 For \(\beta_j\) in \(t_{th}\) iteration
 
@@ -276,14 +280,17 @@ index to evaluate the model fitting.
 \subsubsection{Newton-Raphson}\label{newton-raphson}}
 
 After doing the Newton-Raphson modified with step and direction, the
-estimation of coefficients are:
+estimation of 10 coefficients of means are in table 1 which are
+consistant with the results from glm function. When mean, SD and largest
+values of 30 features are included, the estimation of all 30 features
+are in Supplementary table1.
 
 \begin{center}
 \includegraphics{./results/NR.JPG}
 \end{center}
 
 \begin{center}
-Table 1. Estimated coefficients under Newton-Raphson method
+Table 1. Estimated coefficients of 10 mean features under Newton-Raphson method
 \end{center}
 
 \hypertarget{coordinate-wise}{%
@@ -301,11 +308,11 @@ is the results in 5-Fold Cross Validation:
 \end{center}
 
 \begin{center}
-Table 2. Cross validatin results
+Table 2. Cross validatin results in each fold
 \end{center}
 
 In all 5 folds, all three critria indicates the same optimal
-\(\lambda\), whcih is 0.In the test data of each fold, the AUC ranges
+\(\lambda\), whcih is 0. In the test data of each fold, the AUC ranges
 from 0.99 to 0.97, g-statistics ranges from 22.6 to 48.0, while SSE
 changes from 4.1 to 6.8.
 
@@ -323,8 +330,51 @@ dramatic soar. While AUC has a great drop from 1 to 0.5. All of them
 indicate that the bigger the \(\lambda\) is, the worse the model would
 perform.
 
+Since the optimal \(\lambda\)=0, none of the coefficients of
+logistic-lasso is shrank into 0 as in Table 3.
+
+\begin{center}
+\includegraphics{./results/10 coed when lambd=0.png}
+\end{center}
+
+\begin{center}
+Table 3. Coefficients in final model in Cross Validation
+\end{center}
+
+If total 30 features are considered, the corresponding Cross Validation
+results in each fold is in Supplementary table2. The optimal \(\lambda\)
+under that scenario is 0.03, which shrinks about 20 coefficients into 0
+as presented in Supplementary table3.
+
 \hypertarget{discussion}{%
 \subsection{Discussion}\label{discussion}}
+
+\hypertarget{supplementary}{%
+\subsection{Supplementary}\label{supplementary}}
+
+\begin{center}
+\includegraphics{./results/coef in NR of all 30 predictors.png}
+\end{center}
+
+\begin{center}
+Supplementary Table1: Estimated coefficients of 30 features under Newton-Raphson method
+\end{center}
+
+\begin{center}
+\includegraphics{./results/coef of all 30 predictors in logistic lasso.png}
+\end{center}
+
+\begin{center}
+Supplementary Table2: Estimated coefficients of 30 features in each fold of Cross Validation
+\end{center}
+
+\begin{center}
+\includegraphics{./results/30 coefs when lambda=0.03.png}
+\end{center}
+
+\begin{center}
+Supplementary Table3: Estimated coefficients of 30 features in final model in Cross Validation
+\end{center}
 
 
 \end{document}

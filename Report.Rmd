@@ -1,29 +1,29 @@
 ---
-title: "Project2: Breast Cancer Prediction Model "
-author: "Group 7: Melanie Mayer, Yuqi Miao, Sibei Liu, Xue Jin"
+title: 'Project 2: Breast Cancer Prediction Model '
+author: 'Group 7: Melanie Mayer, Yuqi Miao, Sibei Liu, Xue Jin'
 date: "March 31, 2020"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction
+### Introduction
 
 Breast cancer is the most common invasive cancer and the second leading cause of death from cancer in women worldwide, marked by the uncontrolled growth of breast cells. Non-cancerous breast tumors do not metastasize and are usually not life-threatening, while malignant tumors are cancerous, aggressive and deadly. Therefore, it’s important to have breast lumps accurately diagnosed so that decision with regard to medical treatment, rehabilitation and personal matters can be made appropriately. 
 
-## Objectives
+### Objectives
 
-<<<<<<< HEAD
-The main objective of this project is to build an accurate predictive model based on logistic regression that classifies between malignant and benign images of breast tissue. Using the Breast Cancer Diagnosis dataset, logistics model and logistic-LASSO model will be implemented to predict the diagnosis. A Newton-Raphson algorithm and Pathwise Coordinate optimization will be developed to estimate the logistic model and the lasso-logistic model respectively. We aim to find the model with the best performance in terms of predicting when breast tissue is malignant.
-=======
-The main objective of this project is to build an accurate predictive model based on logistic regression that classifies between malignant and benign images of breast tissue. Using the Breast Cancer Diagnosis dataset, logistics model and logistic-LASSO model will be implemented to predict the diagnosis. A Newton-Raphson algorithm and Pathwise Coordinate optimization will be developed to estimate the logistic model and the lasso model respectively. We aim to find the model with the best performance in terms of predicting when breast tissue is malignant. Ten major predictors will be included in models presented in the result section and models with all 30 predictors are reported in supplementary section. 
->>>>>>> 323e4c1e0339241753a6c13d1dc458a4b3fd6966
 
-## Breast Cancer Diagnosis Dataset
+The main objective of this project is to build an accurate predictive model based on logistic regression that classifies between malignant and benign images of breast tissue. Using the Breast Cancer Diagnosis dataset, logistics model and logistic-LASSO model will be implemented to predict the diagnosis. A Newton-Raphson algorithm and Pathwise Coordinate optimization will be developed to estimate the logistic model and the lasso model respectively. We aim to find the model with the best performance in terms of predicting when breast tissue is malignant. 
 
-The Breast Cancer Diagnosis dataset contains the diagnosis and a set of 10 features capturing the characteristics of the cell nuclei present in the digitized image of breast mass. The ten features collected for each cell nucleus are:
+### Breast Cancer Diagnosis Dataset
+
+The Breast Cancer Diagnosis dataset, with 569 observations, contains the diagnosis and a set of 10 features capturing the characteristics of the cell nuclei present in the digitized image of breast mass. The ten features collected for each cell nucleus are:
 
 * radius (mean of distances from center to points on the perimeter) 
 * texture (standard deviation of gray-scale values) 
@@ -36,11 +36,11 @@ The Breast Cancer Diagnosis dataset contains the diagnosis and a set of 10 featu
 * symmetry 
 * fractal dimension (“coastline approximation” - 1) 
 
-The mean, standard deviation (SD) and largest values of these features are computed for each image, resulting in 30 possible predictive variables. We will analyze the predictive ability for diagnosis of malignant or benign cases of these covariates.
+The mean, standard deviation (SD) and largest values of these features are computed for each image, resulting in 30 possible predictive variables. We will analyze the predictive ability for diagnosis of malignant or benign cases of these covariates. The mean of each feature will be included in our models and presented in the result section. We will also create models with all 30 predictors however, these results will be reported in the supplement section. 
 
-## Methods
+### Methods
 
-### Model Parameters
+#### Model Parameters
 
 For logistic regression we assume the response variable $Y_i$ for the $i_{th}$ observation follows a binary distribution:
 
@@ -61,19 +61,19 @@ The Hessian matrix is thus:
 $$\nabla^2 l(\boldsymbol\theta|\boldsymbol X) = -\sum_{i=1}^n \pi_i(1 - \pi_i)\boldsymbol x_i\boldsymbol x_i^T = -\boldsymbol X^Tdiag(\pi_i(1 - \pi_i)) \boldsymbol X$$
 
 
-### Full model
+#### Full model
 
 In order to estimate $\boldsymbol \beta$ we need to maximize the loglikelihood function. There is no closed form, hence we turn to numerical methods. The Newton-Raphson method is used to fit the full logistic model. To find the maximum likelihood estimate of each element of $\boldsymbol \beta$, an iterative process is set as follows:
 
 $$\theta_{i+1}  = \theta_{i} -\delta (\nabla^2l(\theta_{i}|\boldsymbol X)-\gamma I)^{-1}\nabla l(\theta_{i}|\boldsymbol X) $$
-This is the Newton-Raphson method with two modifications. $\delta$ is included in the process to accomplish the step-halving modification, the step coefficient ensures the likelihood is always increasing in order to achieve quicker convergence. $\gamma$ is the modification coefficient to ensure the aescent direction of the iteration vector at $\theta_{i}$.
+This is the Newton-Raphson method with two modifications. $\delta$ is included in the process to accomplish the step-halving modification, the step coefficient ensures the likelihood is always increasing in order to achieve quicker convergence. Once the likelihood approaches convergence the steps become smaller until convergence is reached. $\gamma$ is the modification coefficient to ensure the aescent direction of the iteration vector at $\theta_{i}$.
 
 
-### Logit-lasso pathwise coordinate-wise update algorithm
+#### Logit-lasso Pathwise Coordinate-wise Update Algorithm
 
-In the case of large dimensionality of predictors or multicollinearity it can be beneficial to perform a regularization method which shrinks coefficients and performs variable selection. Here we implement the Least Absolute Shrinkage and Selection Operator (LASSO) method for logistic regression with a path-wise coordinate-wise optimization algorithm to select variables from the full model and increase the prediction efficiency and avoid overfitting. Seeing how we have 30 predictors describing 10 features, we are likely to experience multicollinearity and expect LASSO to outperform the classical logistic regression. 
+In the case of large dimensionality or multicollinearity of predictors it can be beneficial to perform a regularization method which shrinks coefficients and can perform variable selection. Here we implement the Least Absolute Shrinkage and Selection Operator (LASSO) method for logistic regression with a path-wise coordinate-wise optimization algorithm to select variables from the full model, increase the prediction efficiency and avoid overfitting. With the ten predictor model, LASSO may not be as beneficial compared to the 30 predictor model where we have 30 predictors describing 10 features hence are likely to experience multicollinearity and expect LASSO to outperform the classical logistic regression. 
 
-In LASSO we add an L1 penalization term to the squared loss function, such that we try to find the coefficients to minimize:
+In LASSO we add an L1 penalization term to the loss function, such that we try to find the coefficients to minimize:
 
 $$min _{(\boldsymbol \beta)}\{-l({\boldsymbol \beta})+\lambda\sum_{j=0}^{p}|\beta_j| \}$$
 With the pathwise coordinate-wise update algorithm, we find the likelihood to be: 
@@ -85,7 +85,7 @@ $$\omega_i = \pi_i(1-\pi_i)$$
 
 $$z_i = {\boldsymbol {X_i\beta}}+\frac{y_i-\pi_i}{\pi_i(1-\pi_i)}$$
 
-One must pre-define the tuning parameter sequence $\{\lambda_1,...,\lambda_s\}$ and a starting vector ${\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}$. To imptove efficienct, it is best to define $max{(\boldsymbol \lambda)} = max(\boldsymbol\beta)$ where $\boldsymbol\beta$ refers to the estimated coefficients from the previous iteration. The  optimal process for each $\lambda_u$ is then found by using the optimal $\boldsymbol {\beta_{u-1}}$ from the previous iteration as a warm start. Within every iteration find the optimal $\beta$ coordinate-wise, that is minimize over one parameter at a time while keeping all others fixed.
+One must pre-define the tuning parameter sequence $\{\lambda_1,...,\lambda_s\}$ and a starting vector ${\boldsymbol{\beta_{start=}}}\{\beta_0^{(0)},...,\beta_p^{(0)}\}$. When choosing the sequence of lambdas, it is best to define $max{(\boldsymbol \lambda)} = max(\boldsymbol\beta)$, where $\boldsymbol\beta$ refers to the estimated coefficients from the logistic regression, such that all coefficients will shrink to zero. The optimal process for each $\lambda_u$ is then found by using the optimal $\boldsymbol {\beta_{u-1}}$ from the previous iteration as a warm start in order to reach the optimal values quicker. Within every iteration for each lambda, the optimal $\boldsymbol \beta$ is searched using coordinate-wise updating, that is it is minimized over one parameter at a time while keeping all others fixed.
 
 For $\beta_j$ in $t_{th}$ iteration
 
@@ -96,18 +96,18 @@ $$z_{ij}^* = z_i-\underset {\beta_k\neq0}{\sum_{k = 0}^{j-1}}\beta_k^{(i)}x_{ik}
 
 #### Cross Validation
 
-In order to check the model performance, we use 5-fold cross validation. Using training dataset  to choose the best tuning parameter and fit model, and using test dataset to evaluate the final prediction. The statistics we use to compare the validation is SSE and pearson chi-square statistics, which are defined as:
+In order to find the optimal lambda, we use 5-fold cross validation. The dataset is divided into five subdatasets. The optimal coefficients is then found five times by running the logit-LASSO on a combination of four of the five subsets, leaving a different subset out each time. The subset left out is then used to estimate the model performance. This is done for all lambdas in the pre-defined sequence in order to search for the lambda with the highest average predictive ability. The statistics we use to compare predictive ability is SSE and pearson chi-square statistic. SSE is defined as:
 
 $$SSE = \sum_{i=1}^{n}(y_i-{\widehat \pi_i})^2$$
-$${\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}$$
+where ${\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}$. Pearson chi-square statistic is defined as:
 $$G = \sum_{i=1}^{n}\frac{y_i-{\widehat \pi_i}}{{\widehat \pi_i}(1-{\widehat \pi_i})}$$
 
-By taking average of above 2 statistics of 5 fold, we get the final index to evaluate the model fitting.
+We want both of these statistics to be minimized. By taking the average of the above statistics over the value found for each of the five folds, we get a value to evaluate the model fit for each lambda.
 
-## Results
-### Newton-Raphson
+### Results
+#### Logistic Regression Model
 
-After doing the Newton-Raphson modified with step and direction, the estimation of 10 coefficients of means are in table 1 which are consistant with the results from glm function. When mean, SD and largest values of 30 features are included, the estimation of all 30 features are in Supplementary table1.
+The results from the logistic model estimated using the modified Newton-Raphson algorithm with step-halving and gradient ascent can be found in Table 1. Here we are showing the results when only using the means of the ten features as predictors. We found average area had the largest coefficient. For a one unit increase in the average area of the tissue, we expect to see a change in the log odds of having a malignant tutor of 14, holding all other predictors constant. The predictors were all standardized so caution must be used when analyzing these coefficients however, this seems to be very high however. The smallest coefficient, -7.22, was estimated for average radius. The results from logistic regression using the mean, SD and largest values of the 10 features (30 predictors) are shown in Supplementary Table 1.
 
 \begin{center}
 \includegraphics{./results/NR.JPG}
@@ -117,11 +117,9 @@ After doing the Newton-Raphson modified with step and direction, the estimation 
 Table 1. Estimated coefficients of 10 mean features under Newton-Raphson method
 \end{center}
 
-### Coordinate-Wise
+#### Logistic-LASSO Model
 
-
-The range of $\lambda$ we tried is (3,0) with length 100. The initial guess of all $\beta$ including the intercept is 0.02. The g.statistics, SSE, AUC are introduced to select best $\lambda$ in Cross Validation. The optimal $\lambda$ would be selected based on the minimum SSE, maxmimum AUC and minimum g-statistics in test data. Below is the results in 5-Fold Cross Validation:
-
+The sequence of $\lambda$ we compared ranged from three to zero, with a length of 100. The pre-defined values for all $\beta$ coefficients including the intercept was 0.02. The optimal $\lambda$ was selected based on the minimum SSE, maxmimum AUC and minimum g-statistics estimated on the test dataset. The results from each of the five folds can be found in Table 2. 
 \begin{center}
 \includegraphics{./results/Results from Yuqi.JPG}
 \end{center}
@@ -130,7 +128,7 @@ The range of $\lambda$ we tried is (3,0) with length 100. The initial guess of a
 Table 2. Cross validatin results in each fold
 \end{center}
 
-In all 5 folds, all three critria indicates the same optimal $\lambda$, whcih is 0. In the test data of each fold, the AUC ranges from 0.99 to 0.97, g-statistics ranges from  22.6 to 48.0, while SSE changes from 4.1 to 6.8.
+We find the results are consistant across all five folds and all three statistics. The optimal $\lambda$ appears to be zero. This implies the L1 penalization term added to the loss function is not effecting our model. We see the coefficient terms are much smaller compared to those estimated by the classic logistic regression however. Using the test data of each fold, the AUC ranges from 0.99 to 0.97, the g-statistic ranges from  22.6 to 48.0, while SSE ranges from 4.1 to 6.8.
 
 \begin{center}
 \includegraphics{./results/lambda_change.jpeg}
@@ -154,9 +152,9 @@ Table 3. Coefficients in final model in Cross Validation
 
 If total 30 features are considered, the corresponding Cross Validation results in each fold is in Supplementary table2. The optimal $\lambda$ under that scenario is 0.03, which shrinks about 20 coefficients into 0 as presented in Supplementary table3.
 
-## Discussion
+### Discussion
  
-## Supplementary
+### Supplementary
 
 \begin{center}
 \includegraphics{./results/coef in NR of all 30 predictors.png}
