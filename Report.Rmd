@@ -15,7 +15,11 @@ Breast cancer is the most common invasive cancer and the second leading cause of
 
 ## Objectives
 
+<<<<<<< HEAD
 The main objective of this project is to build an accurate predictive model based on logistic regression that classifies between malignant and benign images of breast tissue. Using the Breast Cancer Diagnosis dataset, logistics model and logistic-LASSO model will be implemented to predict the diagnosis. A Newton-Raphson algorithm and Pathwise Coordinate optimization will be developed to estimate the logistic model and the lasso-logistic model respectively. We aim to find the model with the best performance in terms of predicting when breast tissue is malignant.
+=======
+The main objective of this project is to build an accurate predictive model based on logistic regression that classifies between malignant and benign images of breast tissue. Using the Breast Cancer Diagnosis dataset, logistics model and logistic-LASSO model will be implemented to predict the diagnosis. A Newton-Raphson algorithm and Pathwise Coordinate optimization will be developed to estimate the logistic model and the lasso model respectively. We aim to find the model with the best performance in terms of predicting when breast tissue is malignant. Ten major predictors will be included in models presented in the result section and models with all 30 predictors are reported in supplementary section. 
+>>>>>>> 323e4c1e0339241753a6c13d1dc458a4b3fd6966
 
 ## Breast Cancer Diagnosis Dataset
 
@@ -103,14 +107,14 @@ By taking average of above 2 statistics of 5 fold, we get the final index to eva
 ## Results
 ### Newton-Raphson
 
-After doing the Newton-Raphson modified with step and direction, the estimation of coefficients are:
+After doing the Newton-Raphson modified with step and direction, the estimation of 10 coefficients of means are in table 1 which are consistant with the results from glm function. When mean, SD and largest values of 30 features are included, the estimation of all 30 features are in Supplementary table1.
 
 \begin{center}
 \includegraphics{./results/NR.JPG}
 \end{center}
 
 \begin{center}
-Table 1. Estimated coefficients under Newton-Raphson method
+Table 1. Estimated coefficients of 10 mean features under Newton-Raphson method
 \end{center}
 
 ### Coordinate-Wise
@@ -123,10 +127,10 @@ The range of $\lambda$ we tried is (3,0) with length 100. The initial guess of a
 \end{center}
 
 \begin{center}
-Table 2. Cross validatin results
+Table 2. Cross validatin results in each fold
 \end{center}
 
-In all 5 folds, all three critria indicates the same optimal $\lambda$, whcih is 0.In the test data of each fold, the AUC ranges from 0.99 to 0.97, g-statistics ranges from  22.6 to 48.0, while SSE changes from 4.1 to 6.8.
+In all 5 folds, all three critria indicates the same optimal $\lambda$, whcih is 0. In the test data of each fold, the AUC ranges from 0.99 to 0.97, g-statistics ranges from  22.6 to 48.0, while SSE changes from 4.1 to 6.8.
 
 \begin{center}
 \includegraphics{./results/lambda_change.jpeg}
@@ -138,5 +142,43 @@ Fig 1. Changes in three criteria vs $\lambda$
 
 The Figure 1 shows the trend of AUC SSE and g-statistics in train data. With the increse of $\lambda$, both SSE and g-statistics have a dramatic soar. While AUC has a great drop from 1 to 0.5. All of them indicate that the bigger the $\lambda$ is, the worse the model would perform.
 
+Since the optimal $\lambda$=0, none of the coefficients of logistic-lasso is shrank into 0 as in Table 3.
+
+\begin{center}
+\includegraphics{./results/10 coed when lambd=0.png}
+\end{center}
+
+\begin{center}
+Table 3. Coefficients in final model in Cross Validation
+\end{center}
+
+If total 30 features are considered, the corresponding Cross Validation results in each fold is in Supplementary table2. The optimal $\lambda$ under that scenario is 0.03, which shrinks about 20 coefficients into 0 as presented in Supplementary table3.
+
 ## Discussion
  
+## Supplementary
+
+\begin{center}
+\includegraphics{./results/coef in NR of all 30 predictors.png}
+\end{center}
+
+\begin{center}
+Supplementary Table1: Estimated coefficients of 30 features under Newton-Raphson method
+\end{center}
+
+\begin{center}
+\includegraphics{./results/coef of all 30 predictors in logistic lasso.png}
+\end{center}
+
+\begin{center}
+Supplementary Table2: Estimated coefficients of 30 features in each fold of Cross Validation
+\end{center}
+
+
+\begin{center}
+\includegraphics{./results/30 coefs when lambda=0.03.png}
+\end{center}
+
+\begin{center}
+Supplementary Table3: Estimated coefficients of 30 features in final model in Cross Validation
+\end{center}
