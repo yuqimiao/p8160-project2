@@ -129,6 +129,7 @@ cancer_fit = glm(response ~ ., data = cancer_scale[, -1], family = binomial(link
 round(as.vector(cancer_fit$coefficients), 3) == round(as.vector(NR_coeff), 3)
 # same results as NR
 
+roc(cancer_scale$response ~ predict(cancer_fit, type = "response"))
 
 #run NR algorithm, all measures as predictors
 beta_start2 = rep(0.001, 31)

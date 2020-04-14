@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
@@ -1603,6 +1602,7 @@ summary {
   border: none;
   display: inline-block;
   border-radius: 4px;
+  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -1673,7 +1673,8 @@ summary {
 <p>For logistic regression we assume the response variable <span class="math inline">\(Y_i\)</span> for the <span class="math inline">\(i_{th}\)</span> observation follows a binary distribution:</p>
 <p><span class="math display">\[Y_i\sim Bin(\pi_i)\]</span> where <span class="math inline">\(\pi_i\)</span> denotes the probablity that the <span class="math inline">\(i_{th}\)</span> observation’s tissue is malignant. We can assume all observations are independent from one another, hence the likelihood function for the vector <span class="math inline">\(\boldsymbol\pi\)</span> can be written as:</p>
 <p><span class="math display">\[L(\boldsymbol\pi)=\prod_{i=1}^n f(y_i)=\prod_{i=1}^n\pi_i^{y_i}(1 - \pi_i)^{1-y_i}\]</span></p>
-<p>For logistic regression, the logit link function is used: <span class="math display">\[\log(\frac{\pi_i}{1-\pi_i}) = \boldsymbol \beta ^T\boldsymbol x_i = \theta_i\]</span> where <span class="math inline">\(\boldsymbol x_i^T = \begin{bmatrix} 1 &amp; x_{1i} &amp;x_{2i} &amp; ... &amp; x_{pi} \end{bmatrix}\)</span> and <span class="math inline">\(\boldsymbol \beta^T = \begin{bmatrix} \beta_0 &amp; \beta_1 &amp; \beta_2 &amp; ... &amp; \beta_p \end{bmatrix}\)</span>. One can solve for <span class="math inline">\(\pi_i = \frac{e^{\theta_i}}{1 + e^{\theta_i}}\)</span>. We aim to find the best estimate of the vector of coefficients, <span class="math inline">\(\boldsymbol \beta\)</span>. The log-likelihood function for this vector can be written as:</p>
+<p>For logistic regression, the logit link function is used:</p>
+<p><span class="math display">\[\log(\frac{\pi_i}{1-\pi_i}) = \boldsymbol \beta ^T\boldsymbol x_i = \theta_i\]</span> where <span class="math inline">\(\boldsymbol x_i^T = \begin{bmatrix} 1 &amp; x_{1i} &amp;x_{2i} &amp; ... &amp; x_{pi} \end{bmatrix}\)</span> and <span class="math inline">\(\boldsymbol \beta^T = \begin{bmatrix} \beta_0 &amp; \beta_1 &amp; \beta_2 &amp; ... &amp; \beta_p \end{bmatrix}\)</span>. One can solve for <span class="math inline">\(\pi_i = \frac{e^{\theta_i}}{1 + e^{\theta_i}}\)</span>. We aim to find the best estimate of the vector of coefficients, <span class="math inline">\(\boldsymbol \beta\)</span>. The log-likelihood function for this vector can be written as:</p>
 <p><span class="math display">\[l(\boldsymbol\theta)=logL(\boldsymbol\pi) =\sum_{i=1}^n(Y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i)) = \sum_{i=1}^n(Y_i\theta_i - log(1 + e^{\mathbf \theta_i}))\\\]</span> The maximum likelihood is thus achieved when the gradient is equal to zero and the Hessian is negative definite. The gradient can be found to be:</p>
 <p><span class="math display">\[\nabla l(\boldsymbol\theta|\boldsymbol X) = \sum_{i=1}^n (Y_i - \pi_i)\boldsymbol x_i = \boldsymbol X^T(\boldsymbol Y - \boldsymbol \pi) \]</span></p>
 <p>The Hessian matrix is thus:</p>
@@ -1716,21 +1717,22 @@ summary {
 The sequence of <span class="math inline">\(\lambda\)</span> we compared ranged from three to zero, with a length of 100. The pre-defined values for all <span class="math inline">\(\beta\)</span> coefficients including the intercept was 0.02. The optimal <span class="math inline">\(\lambda\)</span> was selected based on the minimum SSE, maxmimum AUC and minimum g-statistics estimated on the test dataset. The results from each of the five folds can be found in Table 2.
 
 
-<p>We find the results are consistant across all five folds and all three statistics. The optimal <span class="math inline">\(\lambda\)</span> appears to be zero. This implies the L1 penalization term added to the loss function is not effecting our model. We see the coefficient terms are much smaller compared to those estimated by the classic logistic regression however. Using the test data of each fold, the AUC ranges from 0.99 to 0.97, the g-statistic ranges from 22.6 to 48.0, while SSE ranges from 4.1 to 6.8.</p>
+<p>We find the results are consistant across all five folds based on all three statistics. The optimal <span class="math inline">\(\lambda\)</span> appears to be zero. This implies the L1 penalization term added to the loss function is not effecting our model. Using the test data of each fold, the AUC ranges from 0.99 to 0.97, the g-statistic ranges from 22.6 to 48.0, while SSE ranges from 4.1 to 6.8.</p>
 
 
-<p>The Figure 1 shows the trend of AUC SSE and g-statistics in train data. With the increse of <span class="math inline">\(\lambda\)</span>, both SSE and g-statistics have a dramatic soar. While AUC has a great drop from 1 to 0.5. All of them indicate that the bigger the <span class="math inline">\(\lambda\)</span> is, the worse the model would perform.</p>
-<p>Since the optimal <span class="math inline">\(\lambda\)</span>=0, none of the coefficients of logistic-lasso is shrank into 0 as in Table 3.</p>
+<p>Figure 1 shows the trend in AUC, SSE and g-statistic over the range of lambdas tested. With the increase of <span class="math inline">\(\lambda\)</span>, both SSE and g-statistics have a dramatic increase and become constant around 0.4. AUC decreases drastically from 1 to 0.4. All of them indicate that the bigger the <span class="math inline">\(\lambda\)</span> is, the worse the model performs.</p>
+<p>Since the optimal <span class="math inline">\(\lambda\)</span> = 0, none of the coefficients of the logistic-lasso is shrunk to zero, as seen in Table 3. The coefficient terms are much smaller compared to those estimated by the classic logistic regression however.</p>
 
 
-<p>If total 30 features are considered, the corresponding Cross Validation results in each fold is in Supplementary table2. The optimal <span class="math inline">\(\lambda\)</span> under that scenario is 0.03, which shrinks about 20 coefficients into 0 as presented in Supplementary table3.</p>
+<p>The results when all 30 predictors are considered, and their corresponding Cross Validation results in each fold, are shown in Supplementary Table 2. The optimal <span class="math inline">\(\lambda\)</span> under that scenario is 0.03, which shrinks about 20 coefficients to 0, as presented in Supplementary Table 3.</p>
 </div>
 </div>
 <div id="discussion" class="section level3">
 <h3>Discussion</h3>
+<p>When attempting to estimate a binary outcome, there are many other models which could have been used. We could have compared our results to other generalized linear models using a probit or complementary log-log link function.</p>
 </div>
-<div id="supplementary" class="section level3">
-<h3>Supplementary</h3>
+<div id="supplement" class="section level3">
+<h3>Supplement</h3>
 
 
 

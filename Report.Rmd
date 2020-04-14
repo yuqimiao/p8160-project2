@@ -3,14 +3,19 @@ title: 'Project 2: Breast Cancer Prediction Model '
 author: 'Group 7: Melanie Mayer, Yuqi Miao, Sibei Liu, Xue Jin'
 date: "March 31, 2020"
 output:
+  pdf_document: default
+  word_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+options(tinytex.verbose = TRUE)
+
 ```
+
 
 ### Introduction
 
@@ -49,7 +54,10 @@ where $\pi_i$ denotes the probablity that the $i_{th}$ observation's tissue is m
 
 $$L(\boldsymbol\pi)=\prod_{i=1}^n f(y_i)=\prod_{i=1}^n\pi_i^{y_i}(1 - \pi_i)^{1-y_i}$$
 
-For logistic regression, the logit link function is used: $$\log(\frac{\pi_i}{1-\pi_i}) = \boldsymbol \beta ^T\boldsymbol x_i = \theta_i$$ where $\boldsymbol x_i^T =  \begin{bmatrix} 1 & x_{1i} &x_{2i} & ... & x_{pi} \end{bmatrix}$ and $\boldsymbol \beta^T =  \begin{bmatrix} \beta_0 & \beta_1  & \beta_2 & ... & \beta_p \end{bmatrix}$. One can solve for $\pi_i = \frac{e^{\theta_i}}{1 + e^{\theta_i}}$. We aim to find the best estimate of the vector of coefficients, $\boldsymbol \beta$. The log-likelihood function for this vector can be written as:
+For logistic regression, the logit link function is used: 
+
+$$\log(\frac{\pi_i}{1-\pi_i}) = \boldsymbol \beta ^T\boldsymbol x_i = \theta_i$$
+where $\boldsymbol x_i^T =  \begin{bmatrix} 1 & x_{1i} &x_{2i} & ... & x_{pi} \end{bmatrix}$ and $\boldsymbol \beta^T =  \begin{bmatrix} \beta_0 & \beta_1  & \beta_2 & ... & \beta_p \end{bmatrix}$. One can solve for $\pi_i = \frac{e^{\theta_i}}{1 + e^{\theta_i}}$. We aim to find the best estimate of the vector of coefficients, $\boldsymbol \beta$. The log-likelihood function for this vector can be written as:
 
 $$l(\boldsymbol\theta)=logL(\boldsymbol\pi) =\sum_{i=1}^n(Y_ilog\frac{\pi_i}{1-\pi_i}+log(1-\pi_i)) = \sum_{i=1}^n(Y_i\theta_i - log(1 + e^{\mathbf \theta_i}))\\$$
 The maximum likelihood is thus achieved when the gradient is equal to zero and the Hessian is negative definite. The gradient can be found to be:
@@ -128,40 +136,42 @@ The sequence of $\lambda$ we compared ranged from three to zero, with a length o
 Table 2. Cross validatin results in each fold
 \end{center}
 
-We find the results are consistant across all five folds and all three statistics. The optimal $\lambda$ appears to be zero. This implies the L1 penalization term added to the loss function is not effecting our model. We see the coefficient terms are much smaller compared to those estimated by the classic logistic regression however. Using the test data of each fold, the AUC ranges from 0.99 to 0.97, the g-statistic ranges from  22.6 to 48.0, while SSE ranges from 4.1 to 6.8.
+We find the results are consistant across all five folds based on all three statistics. The optimal $\lambda$ appears to be zero. This implies the L1 penalization term added to the loss function is not effecting our model. Using the test data of each fold, the AUC ranges from 0.99 to 0.97, the g-statistic ranges from  22.6 to 48.0, while SSE ranges from 4.1 to 6.8.
 
 \begin{center}
 \includegraphics{./results/lambda_change.jpeg}
 \end{center}
 
 \begin{center}
-Fig 1. Changes in three criteria vs $\lambda$
+Fig 1. Changes in three criteria over range of $\lambda$
 \end{center}
 
-The Figure 1 shows the trend of AUC SSE and g-statistics in train data. With the increse of $\lambda$, both SSE and g-statistics have a dramatic soar. While AUC has a great drop from 1 to 0.5. All of them indicate that the bigger the $\lambda$ is, the worse the model would perform.
+Figure 1 shows the trend in AUC, SSE and g-statistic over the range of lambdas tested. With the increase of $\lambda$, both SSE and g-statistics have a dramatic increase and become constant around 0.4. AUC decreases drastically from 1 to 0.4. All of them indicate that the bigger the $\lambda$ is, the worse the model performs.
 
-Since the optimal $\lambda$=0, none of the coefficients of logistic-lasso is shrank into 0 as in Table 3.
+Since the optimal $\lambda$ = 0, none of the coefficients of the logistic-lasso is shrunk to zero, as seen in Table 3. The coefficient terms are much smaller compared to those estimated by the classic logistic regression however. 
 
 \begin{center}
 \includegraphics{./results/10 coed when lambd=0.png}
 \end{center}
 
 \begin{center}
-Table 3. Coefficients in final model in Cross Validation
+Table 3. Coefficients of final logistic-LASSO model using cross validation
 \end{center}
 
-If total 30 features are considered, the corresponding Cross Validation results in each fold is in Supplementary table2. The optimal $\lambda$ under that scenario is 0.03, which shrinks about 20 coefficients into 0 as presented in Supplementary table3.
+The results when all 30 predictors are considered, and their corresponding Cross Validation results in each fold, are shown in Supplementary Table 2. The optimal $\lambda$ under that scenario is 0.03, which shrinks about 20 coefficients to 0, as presented in Supplementary Table 3.
 
 ### Discussion
- 
-### Supplementary
+
+When attempting to estimate a binary outcome, there are many other models which could have been used. We could have compared our results to other generalized linear models using a probit or complementary log-log link function.
+
+### Supplement
 
 \begin{center}
 \includegraphics{./results/coef in NR of all 30 predictors.png}
 \end{center}
 
 \begin{center}
-Supplementary Table1: Estimated coefficients of 30 features under Newton-Raphson method
+Supplementary Table  1: Estimated coefficients of 30 features under Newton-Raphson method
 \end{center}
 
 \begin{center}
@@ -169,7 +179,7 @@ Supplementary Table1: Estimated coefficients of 30 features under Newton-Raphson
 \end{center}
 
 \begin{center}
-Supplementary Table2: Estimated coefficients of 30 features in each fold of Cross Validation
+Supplementary Table 2: Estimated coefficients of 30 features in each fold of Cross Validation
 \end{center}
 
 
@@ -178,5 +188,5 @@ Supplementary Table2: Estimated coefficients of 30 features in each fold of Cros
 \end{center}
 
 \begin{center}
-Supplementary Table3: Estimated coefficients of 30 features in final model in Cross Validation
+Supplementary Table 3: Estimated coefficients of 30 features in final model in Cross Validation
 \end{center}
