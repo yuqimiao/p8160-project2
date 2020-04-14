@@ -51,7 +51,7 @@ $$\log(\frac{\pi_i}{1-\pi_i}) = \mathbf x_i \boldsymbol \beta$$
 
 ```{r,include=FALSE}
 hessian_gradient_log = function(data, beta_vec){
-  y = as.matrix(data%>% select(last_col()))
+  y = as.matrix(data%>% dplyr::select(last_col()))
   x = as.matrix(data[,1:dim(data)[2]-1])
   theta = x%*%beta_vec
   pi = exp(theta)/(1+exp(theta))
