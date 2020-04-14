@@ -1699,9 +1699,13 @@ summary {
 </div>
 <div id="cross-validation" class="section level4">
 <h4>Cross Validation</h4>
-<p>In order to find the optimal lambda, we use 5-fold cross validation. The dataset is divided into five subdatasets. The optimal coefficients is then found five times by running the logit-LASSO on a combination of four of the five subsets, leaving a different subset out each time. The subset left out is then used to estimate the model performance. This is done for all lambdas in the pre-defined sequence in order to search for the lambda with the highest average predictive ability. The statistics we use to compare predictive ability is SSE and pearson chi-square statistic. SSE is defined as:</p>
-<p><span class="math display">\[SSE = \sum_{i=1}^{n}(y_i-{\widehat \pi_i})^2\]</span> where <span class="math inline">\({\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}\)</span>. Pearson chi-square statistic is defined as: <span class="math display">\[G = \sum_{i=1}^{n}\frac{y_i-{\widehat \pi_i}}{{\widehat \pi_i}(1-{\widehat \pi_i})}\]</span></p>
-<p>We want both of these statistics to be minimized. By taking the average of the above statistics over the value found for each of the five folds, we get a value to evaluate the model fit for each lambda.</p>
+<p>In order to find the optimal lambda, we use 5-fold cross validation. The dataset is divided into five subdatasets. The optimal coefficients is then found five times by running the logit-LASSO on a combination of four of the five subsets, leaving a different subset out each time. The subset left out is then used to estimate the model performance. This is done for all lambdas in the pre-defined sequence in order to search for the lambda with the highest average predictive ability. The statistics we use to compare predictive ability is AUC, SSE and pearson chi-square statistic. AUC is defined as:</p>
+<p><span class="math display">\[AUC = \frac{\sum_{i \in M}rank_i(\frac{-P(P+1)}{2})}{PN}\]</span></p>
+<p>where <span class="math inline">\(i\)</span> indicates the <span class="math inline">\(i_{th}\)</span> observation; M is defined as the collection of malignant cases; <span class="math inline">\(rank\)</span> is defined as the rank of the predicted probability among all observations(if same prediction among observations, take the averaged rank), <span class="math inline">\(P\)</span> and <span class="math inline">\(N\)</span> is defined as the total number of malignant and benign cases,respectively.</p>
+<p>SSE is defined as</p>
+<p><span class="math display">\[SSE = \sum_{i=1}^{n}(y_i-{\widehat \pi_i})^2\]</span> where <span class="math inline">\({\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}\)</span>.</p>
+<p>Pearson chi-square statistic is defined as: <span class="math display">\[G = \sum_{i=1}^{n}\frac{y_i-{\widehat \pi_i}}{{\widehat \pi_i}(1-{\widehat \pi_i})}\]</span></p>
+<p>We use AUC as the criteria to choose the best tuning parameter and corresponding model obtained from train data, and calculating the above three values to evaluate the model performance in test dataset.</p>
 </div>
 </div>
 <div id="results" class="section level3">

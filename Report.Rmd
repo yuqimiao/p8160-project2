@@ -3,10 +3,10 @@ title: 'Project 2: Breast Cancer Prediction Model '
 author: 'Group 7: Melanie Mayer, Yuqi Miao, Sibei Liu, Xue Jin'
 date: "March 31, 2020"
 output:
-  pdf_document: default
-  word_document: default
   html_document:
     df_print: paged
+  word_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -104,13 +104,21 @@ $$z_{ij}^* = z_i-\underset {\beta_k\neq0}{\sum_{k = 0}^{j-1}}\beta_k^{(i)}x_{ik}
 
 #### Cross Validation
 
-In order to find the optimal lambda, we use 5-fold cross validation. The dataset is divided into five subdatasets. The optimal coefficients is then found five times by running the logit-LASSO on a combination of four of the five subsets, leaving a different subset out each time. The subset left out is then used to estimate the model performance. This is done for all lambdas in the pre-defined sequence in order to search for the lambda with the highest average predictive ability. The statistics we use to compare predictive ability is SSE and pearson chi-square statistic. SSE is defined as:
+In order to find the optimal lambda, we use 5-fold cross validation. The dataset is divided into five subdatasets. The optimal coefficients is then found five times by running the logit-LASSO on a combination of four of the five subsets, leaving a different subset out each time. The subset left out is then used to estimate the model performance. This is done for all lambdas in the pre-defined sequence in order to search for the lambda with the highest average predictive ability. The statistics we use to compare predictive ability is AUC, SSE and pearson chi-square statistic. AUC is defined as:
+
+$$AUC = \frac{\sum_{i \in M}rank_i(\frac{-P(P+1)}{2})}{PN}$$
+
+where $i$ indicates the $i_{th}$ observation; M is defined as the collection of malignant cases; $rank$ is defined as the rank of the predicted probability among all observations(if same prediction among observations, take the averaged rank), $P$ and $N$ is defined as the total number of malignant and benign cases,respectively.
+
+SSE is defined as
 
 $$SSE = \sum_{i=1}^{n}(y_i-{\widehat \pi_i})^2$$
-where ${\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}$. Pearson chi-square statistic is defined as:
+where ${\widehat \pi_i} = log\frac{exp({\boldsymbol X_i\beta})}{1+exp({\boldsymbol X_i\beta})}$.
+
+Pearson chi-square statistic is defined as:
 $$G = \sum_{i=1}^{n}\frac{y_i-{\widehat \pi_i}}{{\widehat \pi_i}(1-{\widehat \pi_i})}$$
 
-We want both of these statistics to be minimized. By taking the average of the above statistics over the value found for each of the five folds, we get a value to evaluate the model fit for each lambda.
+We use AUC as the criteria to choose the best tuning parameter and corresponding model obtained from train data, and calculating the above three values to evaluate the model performance in test dataset.
 
 ### Results
 #### Logistic Regression Model
